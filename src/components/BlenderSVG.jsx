@@ -1,157 +1,259 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
+
+/* ── Spec palette ───────────────────────────────────────── */
+const C = {
+  navy:   '#172554',
+  blue:   '#2563EB',
+  yellow: '#FACC15',
+  orange: '#FB923C',
+  green:  '#22C55E',
+};
 
 /**
- * BlenderSVG — Minimalist glass blender illustration
+ * BlenderSVG — Punk countertop blender illustration.
+ *
+ * Uses exact spec palette:
+ *   Outline:  #172554  bold stroke
+ *   Body:     #FB923C  vivid orange
+ *   Controls: #2563EB  electric blue
+ *   Indicator:#22C55E  fresh green
+ *   Accents:  #FACC15  mango yellow
  *
  * Props:
- *   isShaking {boolean} - triggers the blender-shake CSS keyframe animation
- *   fillLevel {number}  - 0 to 1, controls how full the blender liquid appears
- *   liquidColor {string} - CSS color for the liquid fill
+ *   isShaking   {boolean} — trigger vibrate + spinning blade
+ *   fillLevel   {number}  — 0–1 liquid height
+ *   liquidColor {string}  — CSS color for liquid
+ *   compact     {boolean} — 28×28 icon mode
  */
-export function BlenderSVG({ isShaking = false, fillLevel = 0, liquidColor = '#FBBF24' }) {
-  // Calculate the y position for the liquid top edge (SVG coordinate space)
-  // The jar interior spans from y=30 to y=200 (height=170)
-  const jarTop = 30;
-  const jarBottom = 200;
-  const jarHeight = jarBottom - jarTop;
-  const liquidY = jarBottom - jarHeight * fillLevel;
+export function BlenderSVG({
+  isShaking = false,
+  fillLevel = 0,
+  liquidColor = '#FB923C',
+  compact = false,
+}) {
+  const prefersReducedMotion = useReducedMotion();
+  const shouldShake = isShaking && !prefersReducedMotion;
+
+  const jarTop    = 42;
+  const jarBottom = 210;
+  const jarH      = jarBottom - jarTop;
+  const liquidY   = jarBottom - jarH * fillLevel;
+
+  /* ── Compact icon mode ─────────────────────────────────── */
+  if (compact) {
+    return (
+      <svg width="28" height="28" viewBox="0 0 180 300" fill="none" aria-hidden="true">
+        {/* Jar outline */}
+        <path d="M40 42 L24 210 L156 210 L140 42 Z" fill={`${C.orange}30`} stroke={C.navy} strokeWidth="6" strokeLinejoin="round" />
+        {/* Lid */}
+        <path d="M46 42 L134 42 L124 14 L56 14 Z" fill={C.yellow} stroke={C.navy} strokeWidth="5" strokeLinejoin="round" />
+        {/* Base */}
+        <rect x="22" y="218" width="136" height="64" rx="10" fill={C.orange} stroke={C.navy} strokeWidth="5" />
+        {/* Active button */}
+        <rect x="62" y="232" width="56" height="16" rx="3" fill={C.yellow} />
+        {/* Green LED */}
+        <circle cx="148" cy="250" r="8" fill={C.green} />
+      </svg>
+    );
+  }
 
   return (
     <div
-      className={isShaking ? 'blender-shaking' : ''}
-      style={{ transformOrigin: 'bottom center' }}
+      className={shouldShake ? 'is-shaking' : ''}
+      style={{ display: 'inline-block', transformOrigin: 'bottom center' }}
     >
       <svg
-        width="160"
-        height="280"
-        viewBox="0 0 160 280"
+        width="180"
+        height="300"
+        viewBox="0 0 180 300"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
-        aria-label="Glass blender"
+        aria-label="Retro punch blender"
         role="img"
       >
-        {/* ── Drop shadow filter ────────────────── */}
         <defs>
-          <filter id="blender-shadow" x="-20%" y="-10%" width="140%" height="130%">
-            <feDropShadow dx="0" dy="8" stdDeviation="12" floodColor="rgba(0,0,0,0.25)" />
-          </filter>
-          <linearGradient id="jar-glass" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="rgba(255,255,255,0.6)" />
-            <stop offset="40%" stopColor="rgba(255,255,255,0.15)" />
-            <stop offset="100%" stopColor="rgba(255,255,255,0.4)" />
+          {/* Base gradient */}
+          <linearGradient id="bl-base" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%"   stopColor={C.orange} />
+            <stop offset="100%" stopColor="#D96A14" />
           </linearGradient>
-          <linearGradient id="liquid-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor={liquidColor} stopOpacity="0.95" />
-            <stop offset="100%" stopColor="#D97706" stopOpacity="0.85" />
+
+          {/* Glass jar gradient */}
+          <linearGradient id="bl-jar-sheen" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%"   stopColor="rgba(255,255,255,0.22)" />
+            <stop offset="30%"  stopColor="rgba(255,255,255,0.06)" />
+            <stop offset="100%" stopColor="rgba(255,255,255,0)" />
           </linearGradient>
-          <clipPath id="jar-clip">
-            <path d="M35 30 L20 200 L140 200 L125 30 Z" />
+
+          {/* Liquid gradient */}
+          <linearGradient id="bl-liquid" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%"   stopColor={liquidColor} stopOpacity="0.9" />
+            <stop offset="100%" stopColor={liquidColor} stopOpacity="0.6" />
+          </linearGradient>
+
+          {/* Jar clip */}
+          <clipPath id="bl-jar-clip">
+            <path d="M40 42 L24 210 L156 210 L140 42 Z" />
           </clipPath>
+
+          {/* Drop shadow */}
+          <filter id="bl-shadow" x="-20%" y="-10%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="10" stdDeviation="14" floodColor={C.navy} floodOpacity="0.3" />
+          </filter>
         </defs>
 
-        {/* ── Base / Motor ──────────────────────── */}
+        {/* ── MOTOR / BASE ─────────────────────────────────────── */}
         <rect
-          x="22" y="208" width="116" height="52"
-          rx="8"
-          fill="#374151"
-          filter="url(#blender-shadow)"
+          x="18" y="216" width="144" height="70"
+          rx="10"
+          fill="url(#bl-base)"
+          stroke={C.navy}
+          strokeWidth="3.5"
+          filter="url(#bl-shadow)"
         />
-        <rect x="30" y="216" width="100" height="8" rx="4" fill="#4B5563" />
-        {/* Speed buttons */}
-        <rect x="36" y="230" width="24" height="12" rx="3" fill="#6B7280" />
-        <rect x="68" y="230" width="24" height="12" rx="3" fill="#F59E0B" />
-        <rect x="100" y="230" width="24" height="12" rx="3" fill="#6B7280" />
-        <circle cx="80" cy="252" r="8" fill="#9CA3AF" />
-        <circle cx="80" cy="252" r="4" fill="#D1D5DB" />
 
-        {/* ── Coupling ring ─────────────────────── */}
-        <rect x="38" y="200" width="84" height="12" rx="4" fill="#4B5563" />
+        {/* Base horizontal grip lines */}
+        {[232, 242, 252, 262].map((y, i) => (
+          <line key={i} x1="24" y1={y} x2="156" y2={y} stroke="rgba(0,0,0,0.08)" strokeWidth="1.5" />
+        ))}
 
-        {/* ── Jar / Pitcher body ────────────────── */}
-        {/* Jar background (frosted glass) */}
+        {/* ── BUTTONS ROW ──────────────────────────────────────── */}
+        {/* SLOW */}
+        <rect x="26" y="224" width="36" height="15" rx="2" fill="rgba(23,37,84,0.25)" stroke={C.navy} strokeWidth="1.5" />
+        <text x="44" y="235" textAnchor="middle" fontSize="7" fontWeight="700" fill={C.yellow} fontFamily="Inter,sans-serif">SLOW</text>
+
+        {/* BLEND — active (yellow) */}
+        <rect x="72" y="222" width="36" height="18" rx="2" fill={C.yellow} stroke={C.navy} strokeWidth="2" />
+        <text x="90" y="234" textAnchor="middle" fontSize="7.5" fontWeight="900" fill={C.navy} fontFamily="Inter,sans-serif">BLEND</text>
+
+        {/* PULSE */}
+        <rect x="118" y="224" width="36" height="15" rx="2" fill="rgba(23,37,84,0.25)" stroke={C.navy} strokeWidth="1.5" />
+        <text x="136" y="235" textAnchor="middle" fontSize="7" fontWeight="700" fill={C.yellow} fontFamily="Inter,sans-serif">PULSE</text>
+
+        {/* Power dial */}
+        <circle cx="90" cy="263" r="11" fill={C.navy} stroke={C.navy} strokeWidth="2" />
+        <circle cx="90" cy="263" r="6" fill={C.blue} stroke={C.navy} strokeWidth="1.5" />
+        <circle cx="90" cy="257" r="2" fill="rgba(255,255,255,0.7)" />
+
+        {/* Green LED indicator */}
+        <circle cx="152" cy="226" r="5" fill={C.green} stroke={C.navy} strokeWidth="1.5" />
+        <circle cx="152" cy="226" r="2.5" fill="#6EF5A0" opacity="0.8" />
+
+        {/* ── COUPLING COLLAR ──────────────────────────────────── */}
+        <rect x="30" y="208" width="120" height="12" rx="4" fill="#D4600A" stroke={C.navy} strokeWidth="2.5" />
+        <rect x="44" y="211" width="92" height="5" rx="2" fill="rgba(0,0,0,0.18)" />
+
+        {/* ── JAR BODY ─────────────────────────────────────────── */}
+        {/* Jar background glass */}
         <path
-          d="M35 30 L20 200 L140 200 L125 30 Z"
-          fill="rgba(220, 240, 255, 0.35)"
-          stroke="rgba(255,255,255,0.6)"
-          strokeWidth="1.5"
+          d="M40 42 L24 210 L156 210 L140 42 Z"
+          fill={`${C.blue}18`}
+          stroke={C.navy}
+          strokeWidth="4.5"
+          strokeLinejoin="round"
         />
 
-        {/* Liquid fill (animated via fillLevel prop) */}
+        {/* Liquid fill (animated height via fillLevel prop) */}
         {fillLevel > 0 && (
           <motion.g
-            clipPath="url(#jar-clip)"
+            clipPath="url(#bl-jar-clip)"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.4 }}
+            transition={{ duration: 0.5 }}
           >
-            {/* Liquid body */}
-            <rect
-              x="0" y={liquidY}
-              width="160" height={jarBottom - liquidY + 5}
-              fill="url(#liquid-grad)"
-            />
-            {/* Liquid surface wave */}
-            <motion.path
-              d={`M20 ${liquidY} Q50 ${liquidY - 8} 80 ${liquidY} Q110 ${liquidY + 8} 140 ${liquidY} L140 ${liquidY + 4} Q110 ${liquidY + 12} 80 ${liquidY + 4} Q50 ${liquidY - 4} 20 ${liquidY + 4} Z`}
-              fill={liquidColor}
-              opacity={0.7}
-              animate={{ d: [
-                `M20 ${liquidY} Q50 ${liquidY - 8} 80 ${liquidY} Q110 ${liquidY + 8} 140 ${liquidY} L140 ${liquidY+4} Q110 ${liquidY+12} 80 ${liquidY+4} Q50 ${liquidY-4} 20 ${liquidY+4} Z`,
-                `M20 ${liquidY} Q50 ${liquidY + 8} 80 ${liquidY} Q110 ${liquidY - 8} 140 ${liquidY} L140 ${liquidY+4} Q110 ${liquidY-4} 80 ${liquidY+4} Q50 ${liquidY+12} 20 ${liquidY+4} Z`,
-                `M20 ${liquidY} Q50 ${liquidY - 8} 80 ${liquidY} Q110 ${liquidY + 8} 140 ${liquidY} L140 ${liquidY+4} Q110 ${liquidY+12} 80 ${liquidY+4} Q50 ${liquidY-4} 20 ${liquidY+4} Z`,
-              ]}}
-              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-            />
+            <rect x="0" y={liquidY} width="180" height={jarBottom - liquidY + 4} fill="url(#bl-liquid)" />
+
+            {/* Wave surface */}
+            {!prefersReducedMotion && (
+              <motion.path
+                d={`M24 ${liquidY} Q57 ${liquidY - 9} 90 ${liquidY} Q123 ${liquidY + 9} 156 ${liquidY} L156 ${liquidY + 5} Q123 ${liquidY + 14} 90 ${liquidY + 5} Q57 ${liquidY - 4} 24 ${liquidY + 5} Z`}
+                fill={liquidColor}
+                opacity={0.65}
+                animate={{
+                  d: [
+                    `M24 ${liquidY} Q57 ${liquidY - 9} 90 ${liquidY} Q123 ${liquidY + 9} 156 ${liquidY} L156 ${liquidY+5} Q123 ${liquidY+14} 90 ${liquidY+5} Q57 ${liquidY-4} 24 ${liquidY+5} Z`,
+                    `M24 ${liquidY} Q57 ${liquidY + 9} 90 ${liquidY} Q123 ${liquidY - 9} 156 ${liquidY} L156 ${liquidY+5} Q123 ${liquidY-4} 90 ${liquidY+5} Q57 ${liquidY+14} 24 ${liquidY+5} Z`,
+                  ],
+                }}
+                transition={{ duration: isShaking ? 0.35 : 2, repeat: Infinity, ease: 'easeInOut', repeatType: 'mirror' }}
+              />
+            )}
           </motion.g>
         )}
 
-        {/* Glass sheen / reflection (drawn on top of liquid) */}
+        {/* Jar sheen on top of liquid */}
+        <path d="M40 42 L24 210 L156 210 L140 42 Z" fill="url(#bl-jar-sheen)" />
+
+        {/* Jar seam dashed line */}
+        <line x1="90" y1="46" x2="90" y2="206" stroke="rgba(255,255,255,0.1)" strokeWidth="1.5" strokeDasharray="4,7" />
+
+        {/* ── LID ─────────────────────────────────────────────── */}
         <path
-          d="M35 30 L20 200 L140 200 L125 30 Z"
-          fill="url(#jar-glass)"
-          stroke="rgba(255,255,255,0.7)"
-          strokeWidth="1.5"
+          d="M46 42 L134 42 L124 14 L56 14 Z"
+          fill={C.yellow}
+          stroke={C.navy}
+          strokeWidth="4"
+          strokeLinejoin="round"
+        />
+        <line x1="62" y1="28" x2="118" y2="28" stroke="rgba(23,37,84,0.18)" strokeWidth="1.5" />
+
+        {/* Lid knob */}
+        <rect x="68" y="3" width="44" height="13" rx="6" fill={C.orange} stroke={C.navy} strokeWidth="3" />
+        <circle cx="90" cy="9.5" r="3" fill={C.navy} />
+
+        {/* ── SPOUT (right side nub) ───────────────────────────── */}
+        <path
+          d="M140 78 L162 64 L167 74 L145 90 Z"
+          fill={`${C.blue}22`}
+          stroke={C.navy}
+          strokeWidth="3"
+          strokeLinejoin="round"
         />
 
-        {/* ── Lid ──────────────────────────────── */}
+        {/* ── HANDLE ──────────────────────────────────────────── */}
         <path
-          d="M42 30 L118 30 L112 10 L48 10 Z"
-          fill="#374151"
-          stroke="rgba(255,255,255,0.3)"
-          strokeWidth="1"
-        />
-        {/* Lid cap */}
-        <rect x="62" y="2" width="36" height="10" rx="3" fill="#4B5563" />
-
-        {/* ── Spout / Pour spout ───────────────── */}
-        <path
-          d="M125 80 L148 68 L152 76 L128 90 Z"
-          fill="rgba(220, 240, 255, 0.5)"
-          stroke="rgba(255,255,255,0.6)"
-          strokeWidth="1.5"
-        />
-
-        {/* ── Handle ───────────────────────────── */}
-        <path
-          d="M20 100 C-8 100 -8 160 20 160"
-          stroke="rgba(220, 240, 255, 0.7)"
-          strokeWidth="6"
+          d="M24 110 C-8 110 -8 172 24 172"
+          stroke={C.orange}
+          strokeWidth="14"
           strokeLinecap="round"
           fill="none"
         />
         <path
-          d="M20 100 C-4 100 -4 160 20 160"
-          stroke="rgba(255, 255, 255, 0.5)"
-          strokeWidth="2"
+          d="M24 110 C-8 110 -8 172 24 172"
+          stroke={C.navy}
+          strokeWidth="4"
           strokeLinecap="round"
           fill="none"
+          strokeDasharray="0"
+          opacity="0.4"
         />
 
-        {/* ── Blade indicator ──────────────────── */}
-        <line x1="55" y1="196" x2="80" y2="190" stroke="rgba(255,255,255,0.4)" strokeWidth="2" strokeLinecap="round" />
-        <line x1="80" y1="190" x2="105" y2="196" stroke="rgba(255,255,255,0.4)" strokeWidth="2" strokeLinecap="round" />
-        <circle cx="80" cy="190" r="3" fill="rgba(255,255,255,0.5)" />
+        {/* ── BLADE ASSEMBLY ──────────────────────────────────── */}
+        <motion.g
+          style={{ transformOrigin: '90px 200px' }}
+          animate={shouldShake ? { rotate: 360 } : { rotate: 0 }}
+          transition={shouldShake
+            ? { duration: 0.15, repeat: Infinity, ease: 'linear' }
+            : {}
+          }
+        >
+          {/* X blade */}
+          <line x1="56" y1="200" x2="124" y2="200" stroke="rgba(255,255,255,0.6)" strokeWidth="4" strokeLinecap="round" />
+          <line x1="90" y1="186" x2="90" y2="214" stroke="rgba(255,255,255,0.6)" strokeWidth="4" strokeLinecap="round" />
+          {/* Hub */}
+          <circle cx="90" cy="200" r="5.5" fill={C.yellow} stroke={C.navy} strokeWidth="2.5" />
+        </motion.g>
+
+        {/* ── MEASUREMENT LINES ───────────────────────────────── */}
+        {[120, 155, 188].map((ym, i) => (
+          <g key={i}>
+            <line x1="148" y1={ym} x2="154" y2={ym} stroke="rgba(255,255,255,0.22)" strokeWidth="1.5" />
+            <text x="158" y={ym + 4} fontSize="7.5" fill="rgba(255,255,255,0.22)" fontFamily="monospace">
+              {['1', '2', '3'][i]}C
+            </text>
+          </g>
+        ))}
       </svg>
     </div>
   );

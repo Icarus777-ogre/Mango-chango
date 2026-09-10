@@ -1,18 +1,11 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { ScrollStory } from './components/ScrollStory';
-import { Board } from './components/Board';
 
+/**
+ * App — single-page editorial experience.
+ * All sections (hero, story, board, stats) live inside ScrollStory.
+ * No view toggling needed; the board is embedded inline.
+ */
 export default function App() {
-  const [currentView, setCurrentView] = useState('landing');
-
-  return (
-    <main className="w-full min-h-screen bg-slate-950 text-slate-100">
-      {currentView === 'landing' ? (
-        <ScrollStory onEnterBoard={() => setCurrentView('board')} />
-      ) : (
-        <Board onBackToStory={() => setCurrentView('landing')} />
-      )}
-    </main>
-  );
+  return <ScrollStory />;
 }
-

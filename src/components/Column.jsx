@@ -1,173 +1,203 @@
 import React from 'react';
 import { useDroppable } from '@dnd-kit/core';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { TaskCard } from './TaskCard';
 
-/**
- * Column — A droppable Kanban column with ripening-stage visual theming.
- *
- * Props:
- *   columnId  {string}   — 'raw' | 'ripening' | 'harvested'
- *   tasks     {Array}    — ordered array of task objects for this column
- *   meta      {Object}   — COLUMN_META config (colors, labels, etc.)
- */
-export function Column({ columnId, tasks, meta }) {
+/* ── Spec palette ───────────────────────────────────────── */
+const C = {
+  navy:   '#172554',
+  blue:   '#2563EB',
+  yellow: '#FACC15',
+  orange: '#FB923C',
+  green:  '#22C55E',
+  white:  '#FFFFFF',
+};
+
+/* Editorial column identity — overrides COLUMN_META display text */
+const EDITORIAL = {
+  raw: {
+    name:       'SEEDS',
+    accent:     C.blue,
+    label:      '01',
+    emptyText:  'Nothing planted yet.',
+    dropText:   'DROP HERE',
+    headerBg:   C.blue,
+    bodyBg:     '#EFF6FF',
+  },
+  ripening: {
+    name:       'RIPENING',
+    accent:     C.orange,
+    label:      '02',
+    emptyText:  'Still waiting for the sun.',
+    dropText:   'DROP HERE',
+    headerBg:   C.yellow,
+    bodyBg:     '#FFFBEB',
+  },
+  harvested: {
+    name:       'HARVESTED',
+    accent:     C.green,
+    label:      '03',
+    emptyText:  'Nothing ripe yet.',
+    dropText:   'DROP HERE',
+    headerBg:   C.green,
+    bodyBg:     '#F0FDF4',
+  },
+};
+
+export function Column({ columnId, tasks }) {
   const { isOver, setNodeRef } = useDroppable({ id: columnId });
 
+  const ed = EDITORIAL[columnId] ?? EDITORIAL.raw;
   const taskCount = tasks.length;
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ type: 'spring', stiffness: 240, damping: 22, delay: columnId === 'raw' ? 0 : columnId === 'ripening' ? 0.08 : 0.16 }}
-      style={{
-        flex: '1 1 0',
-        minWidth: 0,
-        display: 'flex',
-        flexDirection: 'column',
-        maxWidth: 360,
-      }}
+      transition={{ type: 'spring', stiffness: 260, damping: 24 }}
+      style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}
     >
       {/* Column shell */}
       <div
         style={{
-          background: meta.bgColor,
-          border: `2px ${meta.borderStyle} ${meta.borderColor}`,
-          borderRadius: 20,
-          overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
-          minHeight: 520,
-          maxHeight: 'calc(100vh - 180px)',
+          border: `2px solid ${ed.accent}`,
           boxShadow: isOver
-            ? `0 0 0 3px ${meta.borderColor}, 0 8px 32px ${meta.accentGlow}`
-            : `0 4px 24px rgba(0,0,0,0.06)`,
-          transition: 'box-shadow 0.2s ease',
+            ? `0 0 0 2px ${ed.accent}, 4px 4px 0 ${ed.accent}`
+            : `3px 3px 0 ${ed.accent}44`,
+          background: ed.bodyBg,
+          minHeight: 480,
+          maxHeight: 'calc(100vh - 200px)',
+          transition: 'box-shadow 0.18s ease',
+          overflow: 'hidden',
         }}
       >
-        {/* Column header */}
-        <div style={{
-          padding: '18px 20px 14px',
-          borderBottom: `1px solid ${meta.borderColor}66`,
-          background: `linear-gradient(180deg, ${meta.bgColor} 0%, ${meta.cardBg}55 100%)`,
-          flexShrink: 0,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 22 }}>{meta.emoji}</span>
-              <h2 style={{
-                margin: 0,
-                fontSize: 16,
-                fontWeight: 800,
-                color: meta.headerColor,
-                fontFamily: 'Inter, system-ui, sans-serif',
-                letterSpacing: '-0.02em',
-              }}>
-                {meta.title}
-              </h2>
-            </div>
-            {/* Task count badge */}
-            <motion.span
-              key={taskCount}
-              initial={{ scale: 1.3 }}
-              animate={{ scale: 1 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+        {/* Header — bright accent color */}
+        <div
+          style={{
+            background: ed.headerBg,
+            padding: '14px 18px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexShrink: 0,
+            borderBottom: `2px solid ${ed.accent}`,
+          }}
+        >
+          {/* Stage number + name */}
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+            <span
               style={{
-                background: meta.borderColor,
-                color: meta.headerColor,
-                fontSize: 12,
-                fontWeight: 700,
-                borderRadius: 20,
-                padding: '2px 10px',
-                minWidth: 24,
-                textAlign: 'center',
-                fontFamily: 'Inter, system-ui, sans-serif',
+                fontFamily: "'Inter', sans-serif",
+                fontWeight: 600,
+                fontSize: 10,
+                letterSpacing: '0.14em',
+                color: columnId === 'ripening' ? C.navy : 'rgba(255,255,255,0.75)',
+                textTransform: 'uppercase',
               }}
             >
-              {taskCount}
-            </motion.span>
+              {ed.label}
+            </span>
+            <h2
+              style={{
+                margin: 0,
+                fontFamily: "'Space Grotesk', sans-serif",
+                fontWeight: 800,
+                fontSize: 15,
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+                color: columnId === 'ripening' ? C.navy : C.white,
+                lineHeight: 1,
+              }}
+            >
+              {ed.name}
+            </h2>
           </div>
-          <p style={{
-            margin: 0,
-            fontSize: 12,
-            color: `${meta.headerColor}99`,
-            fontFamily: 'Inter, system-ui, sans-serif',
-          }}>
-            {meta.subtitle}
-          </p>
+
+          {/* Count badge */}
+          <span
+            aria-label={`${taskCount} tasks`}
+            style={{
+              fontFamily: "'Space Grotesk', sans-serif",
+              fontWeight: 800,
+              fontSize: 12,
+              color: columnId === 'ripening' ? C.navy : C.white,
+              background: 'rgba(0,0,0,0.15)',
+              padding: '3px 10px',
+              letterSpacing: '0.02em',
+            }}
+          >
+            {taskCount}
+          </span>
         </div>
 
-        {/* Droppable card area */}
+        {/* Droppable body */}
         <div
           ref={setNodeRef}
           style={{
             flex: 1,
             overflowY: 'auto',
-            padding: '14px 14px 20px',
+            padding: '14px',
             display: 'flex',
             flexDirection: 'column',
             gap: 10,
-            transition: 'background 0.25s ease',
-            background: isOver ? `${meta.accentGlow}` : 'transparent',
+            background: isOver ? `${ed.accent}0D` : 'transparent',
+            transition: 'background 0.15s ease',
           }}
         >
-          {/* Drop hint when over empty column */}
+          {/* Drop indicator (empty + dragging over) */}
           {isOver && taskCount === 0 && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
+            <div
               style={{
-                border: `2px dashed ${meta.borderColor}`,
-                borderRadius: 12,
-                padding: '24px 16px',
+                border: `2px dashed ${ed.accent}`,
+                padding: '28px 16px',
                 textAlign: 'center',
-                color: `${meta.headerColor}88`,
-                fontSize: 13,
-                fontFamily: 'Inter, system-ui, sans-serif',
+                fontFamily: "'Space Grotesk', sans-serif",
+                fontWeight: 700,
+                fontSize: 11,
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase',
+                color: ed.accent,
               }}
             >
-              Drop here to{' '}
-              {columnId === 'raw' ? 'move back to Backlog' :
-               columnId === 'ripening' ? 'start ripening' :
-               'harvest this mango 🥭'}
-            </motion.div>
+              {ed.dropText}
+            </div>
           )}
 
           {/* Empty state */}
           {!isOver && taskCount === 0 && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 0.6 }}
+            <div
               style={{
+                padding: '48px 16px',
                 textAlign: 'center',
-                padding: '32px 16px',
-                color: `${meta.headerColor}77`,
-                fontSize: 13,
-                fontFamily: 'Inter, system-ui, sans-serif',
               }}
             >
-              <div style={{ fontSize: 32, marginBottom: 8, opacity: 0.5 }}>{meta.emoji}</div>
-              <p style={{ margin: 0 }}>
-                {columnId === 'raw' ? 'All seeds are growing!' :
-                 columnId === 'ripening' ? 'Nothing ripening yet.' :
-                 'No mangoes harvested yet.'}
+              <p
+                style={{
+                  fontFamily: "'Inter', sans-serif",
+                  fontSize: 12,
+                  fontWeight: 500,
+                  color: 'rgba(23,37,84,0.35)',
+                  margin: 0,
+                  letterSpacing: '0.02em',
+                }}
+              >
+                {ed.emptyText}
               </p>
-            </motion.div>
+            </div>
           )}
 
           {/* Task cards */}
-          <AnimatePresence mode="popLayout">
-            {tasks.map((task, index) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                columnId={columnId}
-                theme={meta}
-                index={index}
-              />
-            ))}
-          </AnimatePresence>
+          {tasks.map((task, idx) => (
+            <TaskCard
+              key={task.id}
+              task={task}
+              columnId={columnId}
+              index={idx}
+              accentColor={ed.accent}
+            />
+          ))}
         </div>
       </div>
     </motion.div>

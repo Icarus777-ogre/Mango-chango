@@ -1,784 +1,981 @@
-import React, { useRef, useState, useEffect } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+/**
+ * ScrollStory — Main editorial page.
+ *
+ * Single scrollable experience:
+ *   Nav → Hero → Seeds → Ripening → Harvest → Board → Stats → Footer
+ *
+ * Inspired by kail.studio: immersive full-screen sections, large editorial
+ * typography, floating objects, minimal navigation, clean whitespace.
+ */
 
-if (typeof window !== 'undefined') {
-  gsap.registerPlugin(ScrollTrigger);
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { MangoTetrapack } from './MangoTetrapack';
+import { BlenderSVG } from './BlenderSVG';
+import { Board } from './Board';
+import { ProfileStats } from './ProfileStats';
+import {
+  useStore,
+  COLUMNS,
+  selectColumns,
+  selectProfile,
+} from '../store/useStore';
+import { VIRTUES } from '../virtues';
+
+/* ── Spec palette constants ──────────────────────────────── */
+const C = {
+  navy:    '#172554',
+  blue:    '#2563EB',
+  yellow:  '#FACC15',
+  orange:  '#FB923C',
+  green:   '#22C55E',
+  white:   '#FFFFFF',
+  offWhite:'#FAFAF8',
+};
+
+/* ── Smooth spring easing ────────────────────────────────── */
+const ease = [0.22, 1, 0.36, 1];
+
+/* ==========================================================================
+   SHARED MICRO COMPONENTS
+   ========================================================================== */
+
+/** Translucent bubble shape for hero background */
+function Bubble({ size, opacity, x, y, blur = 0 }) {
+  return (
+    <div
+      aria-hidden="true"
+      style={{
+        position: 'absolute',
+        width: size, height: size,
+        borderRadius: '50%',
+        background: `rgba(255,255,255,${opacity})`,
+        border: `1px solid rgba(255,255,255,${Math.min(opacity * 1.8, 0.3)})`,
+        left: x, top: y,
+        filter: blur ? `blur(${blur}px)` : undefined,
+        pointerEvents: 'none',
+      }}
+    />
+  );
 }
 
-// Inline SVG Icons for complete dependency resilience
-const CpuIcon = () => (
-  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M3 9h2m-2 6h2m14-6h2m-2 6h2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
-  </svg>
-);
+/** Scroll-triggered reveal wrapper */
+function Reveal({ children, delay = 0, y = 40 }) {
+  const prefersReducedMotion = useReducedMotion();
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: prefersReducedMotion ? 0 : y }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-12%' }}
+      transition={{ duration: 0.75, ease, delay }}
+    >
+      {children}
+    </motion.div>
+  );
+}
 
-const BrainIcon = () => (
-  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-  </svg>
-);
+/* ── Typography helpers ──────────────────────────────────── */
+const sectionLabel = (color) => ({
+  fontFamily: "'Space Grotesk', sans-serif",
+  fontWeight: 700,
+  fontSize: 11,
+  letterSpacing: '0.16em',
+  textTransform: 'uppercase',
+  color,
+  margin: 0,
+});
 
-const SparklesIcon = () => (
-  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-  </svg>
-);
+const bodyText = (color, size = 18) => ({
+  fontFamily: "'Inter', sans-serif",
+  fontWeight: 500,
+  fontSize: size,
+  lineHeight: 1.6,
+  color,
+  margin: 0,
+});
 
-const ShieldCheckIcon = () => (
-  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-  </svg>
-);
+/* ==========================================================================
+   NAVIGATION
+   ========================================================================== */
+function Nav({ onProfileOpen }) {
+  const [scrolled, setScrolled]         = useState(false);
+  const [mobileOpen, setMobileOpen]     = useState(false);
 
-const ArrowRightIcon = ({ className = "w-4 h-4" }) => (
-  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-  </svg>
-);
-
-const CheckCircleIcon = () => (
-  <svg className="w-4 h-4 text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-  </svg>
-);
-
-const ChevronDownIcon = () => (
-  <svg className="w-4 h-4 animate-bounce text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-  </svg>
-);
-
-export function ScrollStory({ onEnterBoard }) {
-  const containerRef = useRef(null);
-
-  // Graphics Refs
-  const mangoRef = useRef(null);
-  const mangoVisualRef = useRef(null);
-  const leafRef = useRef(null);
-  const blenderRef = useRef(null);
-  const blenderLidRef = useRef(null);
-  const vortexRef = useRef(null);
-  const pourStreamRef = useRef(null);
-  const cartonWrapperRef = useRef(null);
-  const cartonInnerRef = useRef(null);
-
-  // Text Section Refs
-  const text1Ref = useRef(null);
-  const text2Ref = useRef(null);
-  const text3Ref = useRef(null);
-  const text4Ref = useRef(null);
-
-  // Progress state
-  const [activePhase, setActivePhase] = useState(1);
-  const [isCartonFlipped, setIsCartonFlipped] = useState(false);
-
-  // Fallback native scroll listener
   useEffect(() => {
-    const handleScroll = () => {
-      if (!containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      const totalHeight = rect.height - window.innerHeight;
-      if (totalHeight <= 0) return;
-      const progress = Math.max(0, Math.min(1, -rect.top / totalHeight));
-
-      if (progress < 0.25) setActivePhase(1);
-      else if (progress < 0.50) setActivePhase(2);
-      else if (progress < 0.75) setActivePhase(3);
-      else setActivePhase(4);
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    const onScroll = () => setScrolled(window.scrollY > 80);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  // GSAP Master ScrollTrigger Timeline
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    const gsapObj = gsap;
-
-    const ctx = gsapObj.context(() => {
-      // Setup initial states
-      gsapObj.set(mangoRef.current, { scale: 0.7, rotation: -12, opacity: 1, y: 0 });
-      gsapObj.set(blenderRef.current, { y: 250, opacity: 0, scale: 0.8 });
-      gsapObj.set(blenderLidRef.current, { y: -60, opacity: 0 });
-      gsapObj.set(vortexRef.current, { scale: 0, opacity: 0, rotation: 0 });
-      gsapObj.set(pourStreamRef.current, { scaleY: 0, opacity: 0, transformOrigin: 'top center' });
-      gsapObj.set(cartonWrapperRef.current, { y: 150, scale: 0.5, opacity: 0 });
-
-      // Initial opacity for text sections
-      gsapObj.set(text1Ref.current, { opacity: 1, y: 0 });
-      gsapObj.set(text2Ref.current, { opacity: 0, y: 50 });
-      gsapObj.set(text3Ref.current, { opacity: 0, y: 50 });
-      gsapObj.set(text4Ref.current, { opacity: 0, y: 50 });
-
-      // Single Master Timeline linked to ScrollTrigger
-      const tl = gsapObj.timeline({
-        scrollTrigger: {
-          trigger: containerRef.current,
-          start: 'top top',
-          end: 'bottom bottom',
-          scrub: 0.8,
-          onUpdate: (self) => {
-            const p = self.progress;
-            if (p < 0.25) setActivePhase(1);
-            else if (p < 0.50) setActivePhase(2);
-            else if (p < 0.75) setActivePhase(3);
-            else setActivePhase(4);
-          }
-        }
-      });
-
-      // ----------------------------------------------------
-      // PHASE 1 (0% -> 25%): The Seedling (Systems Architect)
-      // ----------------------------------------------------
-      tl.to(mangoRef.current, {
-        scale: 1.1,
-        rotation: 10,
-        duration: 2,
-        ease: 'power1.inOut'
-      }, 0)
-      .to(leafRef.current, {
-        rotation: 25,
-        duration: 2,
-        ease: 'sine.inOut'
-      }, 0);
-
-      // Transition Section 1 out / Section 2 in (around 22% - 28%)
-      tl.to(text1Ref.current, {
-        opacity: 0,
-        y: -40,
-        duration: 1
-      }, 1.8)
-      .to(text2Ref.current, {
-        opacity: 1,
-        y: 0,
-        duration: 1
-      }, 2.2);
-
-      // ----------------------------------------------------
-      // PHASE 2 (25% -> 50%): The Ripening (Aman - Data & AI)
-      // ----------------------------------------------------
-      // Morph mango visual color & glow from Green to Golden Yellow
-      tl.to(mangoVisualRef.current, {
-        backgroundColor: '#F59E0B',
-        boxShadow: '0 0 70px rgba(245, 158, 11, 0.7)',
-        duration: 2
-      }, 2.5)
-      .to(mangoRef.current, {
-        y: -15,
-        rotation: -8,
-        scale: 1.25,
-        duration: 2,
-        ease: 'sine.inOut'
-      }, 2.5);
-
-      // Transition Section 2 out / Section 3 in (around 47% - 53%)
-      tl.to(text2Ref.current, {
-        opacity: 0,
-        y: -40,
-        duration: 1
-      }, 4.2)
-      .to(text3Ref.current, {
-        opacity: 1,
-        y: 0,
-        duration: 1
-      }, 4.6);
-
-      // ----------------------------------------------------
-      // PHASE 3 (50% -> 75%): The Blender (UI/UX Developer)
-      // ----------------------------------------------------
-      // Blender slides up
-      tl.to(blenderRef.current, {
-        y: 0,
-        opacity: 1,
-        scale: 1,
-        duration: 1.5,
-        ease: 'back.out(1.2)'
-      }, 5.0);
-
-      // Golden Mango drops inside blender container
-      tl.to(mangoRef.current, {
-        y: 110,
-        scale: 0.4,
-        opacity: 0,
-        duration: 1.2,
-        ease: 'power2.in'
-      }, 5.4);
-
-      // Blender Lid snaps closed
-      tl.to(blenderLidRef.current, {
-        y: 0,
-        opacity: 1,
-        duration: 0.8,
-        ease: 'bounce.out'
-      }, 6.2);
-
-      // Vortex spins & liquid turns orange swirl
-      tl.to(vortexRef.current, {
-        scale: 1,
-        opacity: 1,
-        rotation: 720,
-        duration: 1.8,
-        ease: 'power2.inOut'
-      }, 6.5);
-
-      // Transition Section 3 out / Section 4 in (around 72% - 78%)
-      tl.to(text3Ref.current, {
-        opacity: 0,
-        y: -40,
-        duration: 1
-      }, 7.0)
-      .to(text4Ref.current, {
-        opacity: 1,
-        y: 0,
-        duration: 1
-      }, 7.4);
-
-      // ----------------------------------------------------
-      // PHASE 4 (75% -> 100%): The Pour & Carton (Security & Delivery)
-      // ----------------------------------------------------
-      // Blender tilts to pour
-      tl.to(blenderRef.current, {
-        rotation: -45,
-        x: -40,
-        duration: 1.2,
-        ease: 'power2.inOut'
-      }, 7.5);
-
-      // Pour liquid stream activates
-      tl.to(pourStreamRef.current, {
-        scaleY: 1,
-        opacity: 1,
-        duration: 0.8,
-        ease: 'power1.in'
-      }, 8.0);
-
-      // Carton container enters with spring bounce
-      tl.to(cartonWrapperRef.current, {
-        y: 40,
-        scale: 1,
-        opacity: 1,
-        duration: 1.2,
-        ease: 'back.out(1.7)'
-      }, 8.2);
-
-      // Pour finishes & blender resets slightly
-      tl.to(pourStreamRef.current, {
-        opacity: 0,
-        duration: 0.5
-      }, 8.9)
-      .to(blenderRef.current, {
-        opacity: 0.3,
-        scale: 0.85,
-        duration: 0.8
-      }, 9.0);
-
-      // Carton card flip action on end of scroll
-      tl.to(cartonInnerRef.current, {
-        rotateY: 180,
-        duration: 1.5,
-        ease: 'power2.inOut',
-        onComplete: () => setIsCartonFlipped(true),
-        onReverseComplete: () => setIsCartonFlipped(false)
-      }, 9.2);
-
-    }, containerRef);
-
-    return () => ctx.revert();
-  }, []);
-
-  const handleSkipToBoard = () => {
-    if (onEnterBoard) onEnterBoard();
+  const scrollTo = (id) => {
+    setMobileOpen(false);
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const onWhite   = scrolled;
+  const textColor = onWhite ? C.navy : 'rgba(255,255,255,0.9)';
+  const navBg     = onWhite ? 'rgba(255,255,255,0.97)' : 'transparent';
+
+  const links = [
+    { label: 'SEEDS',   id: 'seeds' },
+    { label: 'BOARD',   id: 'board' },
+    { label: 'HARVEST', id: 'harvest' },
+    { label: 'STATS',   id: 'stats' },
+  ];
+
   return (
-    <div 
-      ref={containerRef} 
-      className="relative w-full bg-slate-950 text-slate-100 font-sans min-h-[400vh] selection:bg-amber-500 selection:text-slate-950"
-    >
-      {/* Dynamic Background Gradient Aura */}
-      <div 
-        className={`fixed inset-0 pointer-events-none transition-colors duration-1000 z-0 ${
-          activePhase === 1 
-            ? 'bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-emerald-950/60 via-slate-950 to-slate-950'
-            : activePhase === 2
-            ? 'bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-amber-950/60 via-slate-950 to-slate-950'
-            : activePhase === 3
-            ? 'bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-orange-950/60 via-slate-950 to-slate-950'
-            : 'bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-amber-600/20 via-orange-950/60 to-slate-950'
-        }`}
-      />
+    <>
+      <nav
+        role="navigation"
+        aria-label="Main navigation"
+        style={{
+          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '18px 48px',
+          background: navBg,
+          backdropFilter: onWhite ? 'blur(18px)' : 'none',
+          borderBottom: onWhite ? `1px solid rgba(23,37,84,0.08)` : 'none',
+          transition: 'background 0.4s ease, border-color 0.4s ease',
+        }}
+      >
+        {/* Wordmark */}
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          aria-label="Scroll to top"
+          style={{
+            fontFamily: "'Space Grotesk', sans-serif",
+            fontWeight: 700,
+            fontSize: 13,
+            letterSpacing: '0.12em',
+            textTransform: 'uppercase',
+            color: textColor,
+            background: 'none', border: 'none', cursor: 'pointer',
+            padding: 0,
+            transition: 'color 0.4s',
+          }}
+        >
+          Mango Harvest
+        </button>
 
-      {/* Grid Pattern Overlay */}
-      <div className="fixed inset-0 bg-[linear-gradient(to_right,#1e293b15_1px,transparent_1px),linear-gradient(to_bottom,#1e293b15_1px,transparent_1px)] bg-[size:4rem_4rem] pointer-events-none z-0" />
-
-      {/* TOP NAVIGATION BAR */}
-      <header className="fixed top-0 left-0 right-0 z-50 px-6 py-4 flex items-center justify-between backdrop-blur-md bg-slate-950/75 border-b border-slate-800/80">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/20">
-            <SparklesIcon />
-          </div>
-          <div>
-            <h1 className="text-lg font-extrabold tracking-wider bg-gradient-to-r from-amber-300 via-orange-400 to-amber-200 bg-clip-text text-transparent">
-              THE MANGO HARVEST
-            </h1>
-            <p className="text-xs text-slate-400 font-mono">Interactive Credits & Storyboard</p>
-          </div>
-        </div>
-
-        {/* Phase Indicators */}
-        <div className="hidden md:flex items-center gap-2 bg-slate-900/80 border border-slate-800 rounded-full px-4 py-1.5 text-xs font-mono">
-          {[
-            { id: 1, label: '01. Seedling' },
-            { id: 2, label: '02. Ripening' },
-            { id: 3, label: '03. Blender' },
-            { id: 4, label: '04. The Pour' },
-          ].map((phase) => (
-            <span
-              key={phase.id}
-              className={`px-3 py-1 rounded-full transition-all duration-300 ${
-                activePhase === phase.id
-                  ? 'bg-amber-500 text-slate-950 font-bold shadow-md shadow-amber-500/30 scale-105'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
+        {/* Desktop links */}
+        <div
+          className="nav-desktop"
+          style={{ display: 'flex', alignItems: 'center', gap: 36 }}
+        >
+          {links.map((link) => (
+            <button
+              key={link.id}
+              onClick={() => scrollTo(link.id)}
+              style={{
+                fontFamily: "'Inter', sans-serif",
+                fontWeight: 600,
+                fontSize: 11,
+                letterSpacing: '0.14em',
+                textTransform: 'uppercase',
+                color: textColor,
+                background: 'none', border: 'none', cursor: 'pointer',
+                padding: '4px 0',
+                opacity: 0.82,
+                transition: 'opacity 0.2s, color 0.4s',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = 1)}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = 0.82)}
             >
-              {phase.label}
-            </span>
+              {link.label}
+            </button>
           ))}
-        </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-3">
+          {/* Profile button */}
           <button
-            onClick={handleSkipToBoard}
-            className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs tracking-wide shadow-lg shadow-amber-500/25 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer"
+            id="profile-open-btn"
+            onClick={onProfileOpen}
+            style={{
+              fontFamily: "'Space Grotesk', sans-serif",
+              fontWeight: 700,
+              fontSize: 11,
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              padding: '10px 22px',
+              background: onWhite ? C.navy : 'rgba(255,255,255,0.15)',
+              color: C.white,
+              border: `2px solid ${onWhite ? C.navy : 'rgba(255,255,255,0.45)'}`,
+              cursor: 'pointer',
+              transition: 'all 0.3s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = C.yellow;
+              e.currentTarget.style.color      = C.navy;
+              e.currentTarget.style.borderColor = C.yellow;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background  = onWhite ? C.navy : 'rgba(255,255,255,0.15)';
+              e.currentTarget.style.color       = C.white;
+              e.currentTarget.style.borderColor = onWhite ? C.navy : 'rgba(255,255,255,0.45)';
+            }}
           >
-            <span>Enter Board</span>
-            <ArrowRightIcon />
+            PROFILE
           </button>
         </div>
-      </header>
 
-      {/* PINNED CENTRAL STAGE (STAYS FIXED IN VIEWPORT CENTER) */}
-      <div 
-        className="sticky top-0 h-screen w-full flex items-center justify-center pointer-events-none z-10 overflow-hidden"
-      >
-        {/* Glow Aura Ring behind graphics */}
-        <div 
-          className={`absolute w-80 h-80 rounded-full blur-3xl transition-all duration-700 opacity-60 ${
-            activePhase === 1 ? 'bg-emerald-500' :
-            activePhase === 2 ? 'bg-amber-400' :
-            activePhase === 3 ? 'bg-orange-500' : 'bg-amber-500'
-          }`}
-        />
+        {/* Mobile burger */}
+        <button
+          className="nav-mobile-btn"
+          onClick={() => setMobileOpen(!mobileOpen)}
+          aria-label="Toggle mobile navigation"
+          aria-expanded={mobileOpen}
+          style={{
+            background: 'none', border: 'none',
+            cursor: 'pointer', color: textColor,
+            display: 'none', padding: 4,
+            transition: 'color 0.4s',
+          }}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+            {mobileOpen
+              ? <><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>
+              : <><line x1="3" y1="8" x2="21" y2="8"/><line x1="3" y1="16" x2="21" y2="16"/></>
+            }
+          </svg>
+        </button>
+      </nav>
 
-        {/* CENTRAL TRANSFORMING VISUAL CONTAINER */}
-        <div className="relative w-80 h-96 flex items-center justify-center">
-
-          {/* 1. MANGO VISUAL (Phase 1 & 2) */}
-          <div 
-            ref={mangoRef} 
-            className="absolute z-20 flex flex-col items-center justify-center cursor-pointer pointer-events-auto"
+      {/* Mobile menu */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.div
+            key="mobile-menu"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2, ease }}
+            style={{
+              position: 'fixed', top: 70, left: 0, right: 0,
+              background: C.white,
+              borderBottom: `3px solid ${C.navy}`,
+              padding: '20px 32px 28px',
+              zIndex: 99,
+              display: 'flex', flexDirection: 'column', gap: 18,
+            }}
           >
-            {/* Stem */}
-            <div className="w-3 h-7 bg-amber-900 rounded-t-sm relative -mb-1 shadow-inner" />
-            {/* Leaf */}
-            <div 
-              ref={leafRef} 
-              className="absolute -top-3 right-12 w-12 h-6 bg-gradient-to-r from-emerald-500 to-green-400 rounded-full rotate-45 shadow-md border border-emerald-300/40"
-            />
-            {/* Morphing Mango Body */}
-            <div 
-              ref={mangoVisualRef}
-              className="w-48 h-64 bg-gradient-to-br from-emerald-500 via-green-600 to-emerald-700 rounded-[40%_60%_70%_30%/50%_60%_40%_50%] shadow-[0_0_50px_rgba(16,185,129,0.5)] border-2 border-white/20 relative overflow-hidden flex items-center justify-center transition-colors duration-500"
-            >
-              {/* Gloss Specular Highlight */}
-              <div className="absolute top-4 left-6 w-16 h-28 bg-white/25 rounded-full blur-md rotate-12 pointer-events-none" />
-              <div className="text-slate-950/20 font-black text-6xl select-none rotate-90">
-                🥭
-              </div>
-            </div>
-          </div>
-
-          {/* 2. BLENDER CONTAINER (Phase 3) */}
-          <div 
-            ref={blenderRef} 
-            className="absolute z-10 w-56 h-80 flex flex-col items-center justify-end pointer-events-auto"
-          >
-            {/* Lid */}
-            <div 
-              ref={blenderLidRef} 
-              className="w-44 h-8 bg-slate-800 border-2 border-slate-600 rounded-t-xl flex items-center justify-center shadow-lg relative z-30"
-            >
-              <div className="w-10 h-4 bg-amber-500 rounded-t-md border border-amber-300" />
-            </div>
-
-            {/* Glass Jar */}
-            <div className="w-48 h-64 backdrop-blur-md bg-white/10 border-2 border-white/30 rounded-b-2xl relative overflow-hidden flex flex-col justify-end shadow-2xl">
-              {/* Measurement markings */}
-              <div className="absolute left-2 top-4 bottom-4 flex flex-col justify-between text-[9px] font-mono text-white/40 border-r border-white/20 pr-1">
-                <span>800ml</span>
-                <span>600ml</span>
-                <span>400ml</span>
-                <span>200ml</span>
-              </div>
-
-              {/* Swirling Vortex Smoothie */}
-              <div 
-                ref={vortexRef} 
-                className="w-full h-44 bg-gradient-to-t from-orange-600 via-amber-500 to-yellow-400 rounded-t-full relative overflow-hidden flex items-center justify-center"
+            {[...links, { label: 'PROFILE', id: 'profile' }].map((link) => (
+              <button
+                key={link.id}
+                onClick={() => {
+                  setMobileOpen(false);
+                  link.id === 'profile' ? onProfileOpen() : scrollTo(link.id);
+                }}
+                style={{
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  fontWeight: 700, fontSize: 14,
+                  letterSpacing: '0.1em', textTransform: 'uppercase',
+                  color: C.navy, background: 'none', border: 'none',
+                  cursor: 'pointer', textAlign: 'left', padding: '4px 0',
+                }}
               >
-                <div className="absolute inset-0 bg-[radial-gradient(circle,_transparent_30%,_rgba(255,255,255,0.3)_70%)] animate-spin" style={{ animationDuration: '3s' }} />
-                <div className="text-xs font-mono font-bold text-slate-950 bg-white/30 px-2 py-0.5 rounded-full backdrop-blur-sm">
-                  BLENDING...
-                </div>
-              </div>
-            </div>
+                {link.label}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
 
-            {/* Stainless Steel Base */}
-            <div className="w-56 h-12 bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 border-2 border-slate-600 rounded-b-xl flex items-center justify-between px-6 shadow-xl">
-              <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse shadow-sm shadow-emerald-400" />
-              <div className="w-12 h-3 bg-slate-900 rounded-full border border-slate-600" />
-              <div className="w-3 h-3 rounded-full bg-amber-500" />
-            </div>
-          </div>
+/* ==========================================================================
+   HERO SECTION
+   ========================================================================== */
+function HeroSection() {
+  const prefersReducedMotion = useReducedMotion();
 
-          {/* STREAM POUR VISUAL (Phase 4 transition) */}
-          <div 
-            ref={pourStreamRef} 
-            className="absolute top-40 right-10 w-6 h-36 bg-gradient-to-b from-amber-400 to-orange-500 rounded-full shadow-[0_0_20px_rgba(245,158,11,0.8)] z-20 pointer-events-none"
-          />
+  return (
+    <section
+      id="hero"
+      aria-labelledby="hero-title"
+      style={{
+        minHeight: '100vh',
+        background: C.blue,
+        position: 'relative',
+        overflow: 'hidden',
+        display: 'flex',
+        alignItems: 'center',
+        paddingTop: 80,
+      }}
+    >
+      {/* Translucent bubbles — decorative only */}
+      <Bubble size={430} opacity={0.06} x="56%" y="-6%" blur={45} />
+      <Bubble size={210} opacity={0.09} x="5%"  y="54%" />
+      <Bubble size={95}  opacity={0.12} x="83%" y="67%" />
+      <Bubble size={58}  opacity={0.16} x="22%" y="16%" />
+      <Bubble size={140} opacity={0.07} x="87%" y="18%" blur={18} />
 
-          {/* 3. TETRA PAK CARTON (Phase 4) */}
-          <div 
-            ref={cartonWrapperRef} 
-            className="absolute z-30 w-64 h-88 [perspective:1000px] pointer-events-auto cursor-pointer"
-            onClick={() => setIsCartonFlipped(!isCartonFlipped)}
-          >
-            <div 
-              ref={cartonInnerRef}
-              className={`w-full h-full relative transition-transform duration-700 [transform-style:preserve-3d] ${
-                isCartonFlipped ? '[transform:rotateY(180deg)]' : ''
-              }`}
+      {/* Content grid */}
+      <div
+        className="hero-inner"
+        style={{
+          width: '100%', maxWidth: 1400,
+          margin: '0 auto',
+          padding: '60px 60px',
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          alignItems: 'center',
+          gap: 48,
+        }}
+      >
+        {/* Left: editorial headline */}
+        <div>
+          <Reveal>
+            <p style={sectionLabel('rgba(255,255,255,0.55)')}>
+              Mango Harvest Studio · 2026
+            </p>
+          </Reveal>
+
+          <Reveal delay={0.06}>
+            <h1
+              id="hero-title"
+              style={{
+                fontFamily: "'Bebas Neue', sans-serif",
+                fontSize: 'clamp(4.5rem, 11.5vw, 10.5rem)',
+                color: C.white,
+                lineHeight: 0.9,
+                letterSpacing: '0.01em',
+                margin: '16px 0 30px',
+                textShadow: `4px 4px 0 rgba(23,37,84,0.28)`,
+              }}
             >
-              {/* FRONT SIDE: Carton Cover */}
-              <div className="absolute inset-0 w-full h-full [backface-visibility:hidden] bg-gradient-to-br from-amber-500 via-orange-500 to-amber-600 rounded-3xl p-5 border-2 border-amber-300/40 shadow-2xl flex flex-col justify-between text-slate-950">
-                {/* Top Fold */}
-                <div className="flex justify-between items-center border-b border-slate-950/20 pb-2">
-                  <span className="text-[10px] font-mono font-black tracking-widest uppercase">100% PURE RECREATION</span>
-                  <div className="w-4 h-4 rounded-full bg-slate-950/20 flex items-center justify-center text-[10px]">🧃</div>
-                </div>
+              RIPEN<br />
+              YOUR<br />
+              WORK.
+            </h1>
+          </Reveal>
 
-                {/* Main Brand */}
-                <div className="text-center my-auto">
-                  <div className="text-4xl mb-1 filter drop-shadow-md">🥭</div>
-                  <h2 className="text-xl font-black tracking-tight text-slate-950 uppercase leading-none">
-                    MANGO HARVEST
-                  </h2>
-                  <p className="text-xs font-bold text-slate-900/80 mt-1 uppercase tracking-wider">
-                    CREDITS SMOOTHIE
-                  </p>
-                  <div className="mt-3 inline-block bg-slate-950 text-amber-400 text-[10px] font-mono px-3 py-1 rounded-full font-bold shadow-md">
-                    SERVES 4 TEAM MEMBERS
-                  </div>
-                </div>
+          <Reveal delay={0.11}>
+            <p
+              style={{
+                ...bodyText('rgba(255,255,255,0.72)', 18),
+                maxWidth: 380,
+                marginBottom: 44,
+              }}
+            >
+              Turn unfinished tasks into something golden.
+            </p>
+          </Reveal>
 
-                {/* Bottom Footer */}
-                <div className="bg-slate-950/10 rounded-xl p-2 text-center border border-slate-950/10">
-                  <p className="text-[10px] font-bold text-slate-950">Click to Flip Nutritional Virtues ↻</p>
-                </div>
-              </div>
+          <Reveal delay={0.16}>
+            <button
+              id="start-harvesting-btn"
+              onClick={() => document.getElementById('board')?.scrollIntoView({ behavior: 'smooth' })}
+              style={{
+                fontFamily: "'Space Grotesk', sans-serif",
+                fontWeight: 700,
+                fontSize: 13,
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                padding: '16px 34px',
+                background: C.yellow,
+                color: C.navy,
+                border: `2px solid transparent`,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 12,
+                transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform  = 'translate(-3px,-3px)';
+                e.currentTarget.style.boxShadow = `4px 4px 0 ${C.navy}`;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform  = 'none';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+              onMouseDown={(e) => {
+                e.currentTarget.style.transform  = 'translate(1px,1px)';
+                e.currentTarget.style.boxShadow = `1px 1px 0 ${C.navy}`;
+              }}
+            >
+              START HARVESTING
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+                <path d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
+            </button>
+          </Reveal>
+        </div>
 
-              {/* BACK SIDE: Nutritional Virtues Label */}
-              <div className="absolute inset-0 w-full h-full [backface-visibility:hidden] [transform:rotateY(180deg)] bg-slate-900 text-slate-100 rounded-3xl p-5 border-2 border-amber-500/50 shadow-2xl flex flex-col justify-between font-mono">
-                <div>
-                  <div className="border-b-4 border-slate-100 pb-1 mb-2 flex justify-between items-end">
-                    <h3 className="text-base font-black tracking-tight text-amber-400 uppercase">NUTRITION FACTS</h3>
-                    <span className="text-[10px] text-slate-400">1 CAN / 400vh</span>
-                  </div>
-
-                  <p className="text-[9px] text-slate-400 border-b border-slate-700 pb-1 mb-2">
-                    Amount Per Serving % Daily Value*
-                  </p>
-
-                  <div className="space-y-2 text-xs">
-                    <div>
-                      <div className="flex justify-between">
-                        <span className="font-bold text-emerald-400">Intellect (Systems)</span>
-                        <span>100%</span>
-                      </div>
-                      <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden mt-0.5">
-                        <div className="w-[100%] h-full bg-emerald-400" />
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="flex justify-between">
-                        <span className="font-bold text-amber-400">Resilience (AI & Data)</span>
-                        <span>98%</span>
-                      </div>
-                      <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden mt-0.5">
-                        <div className="w-[98%] h-full bg-amber-400" />
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="flex justify-between">
-                        <span className="font-bold text-orange-400">Discipline (UI/UX)</span>
-                        <span>95%</span>
-                      </div>
-                      <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden mt-0.5">
-                        <div className="w-[95%] h-full bg-orange-400" />
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="flex justify-between">
-                        <span className="font-bold text-sky-400">Security & Delivery</span>
-                        <span>100%</span>
-                      </div>
-                      <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden mt-0.5">
-                        <div className="w-[100%] h-full bg-sky-400" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="border-t border-slate-800 pt-2 text-[9px] text-slate-400 text-center">
-                  * Percent Virtues based on a 2,000 calorie production roadmap.
-                </div>
-              </div>
-            </div>
-          </div>
-
+        {/* Right: floating tetrapack */}
+        <div
+          className="hero-tetrapack"
+          style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}
+        >
+          <motion.div
+            animate={prefersReducedMotion ? {} : {
+              y: [-18, 16, -18],
+              rotate: [-2.5, 2.5, -2.5],
+            }}
+            transition={{ duration: 7.5, repeat: Infinity, ease: 'easeInOut' }}
+            style={{ filter: `drop-shadow(0 28px 52px rgba(23,37,84,0.45))` }}
+          >
+            <MangoTetrapack size="xl" animate={true} />
+          </motion.div>
         </div>
       </div>
 
-      {/* FLOATING TEXT SECTIONS OVERLAY (HEIGHT 400VH) */}
-      <div className="relative z-20 max-w-7xl mx-auto px-6">
+      {/* Scroll prompt */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute', bottom: 36, left: '50%',
+          transform: 'translateX(-50%)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+          pointerEvents: 'none',
+        }}
+      >
+        <span style={{ ...sectionLabel('rgba(255,255,255,0.4)'), letterSpacing: '0.2em', fontSize: 10 }}>
+          SCROLL
+        </span>
+        <motion.div
+          animate={prefersReducedMotion ? {} : { y: [0, 8, 0] }}
+          transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+        >
+          <svg width="18" height="26" viewBox="0 0 18 26" fill="none">
+            <rect x="1" y="1" width="16" height="24" rx="8" stroke="rgba(255,255,255,0.35)" strokeWidth="1.5" />
+            <circle cx="9" cy="9" r="2.5" fill="rgba(255,255,255,0.5)" />
+          </svg>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
 
-        {/* SECTION 1: 0% - 25% (The Seedling -> Systems Architect) */}
-        <section className="min-h-screen flex items-center justify-start py-20">
-          <div 
-            ref={text1Ref} 
-            className="w-full md:w-1/2 lg:w-5/12 bg-slate-900/90 backdrop-blur-xl border border-emerald-500/30 rounded-3xl p-8 shadow-2xl shadow-emerald-950/40 relative group"
-          >
-            <div className="absolute -top-3 left-6 px-3 py-1 bg-emerald-500 text-slate-950 font-mono font-black text-xs rounded-full uppercase tracking-wider shadow-md">
-              01 / THE SEEDLING
-            </div>
+/* ==========================================================================
+   SEEDS SECTION (01)
+   ========================================================================== */
+function SeedsSection() {
+  const prefersReducedMotion = useReducedMotion();
 
-            <div className="flex items-center gap-3 mb-4 mt-2">
-              <div className="p-2.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
-                <CpuIcon />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-emerald-300">Systems Architect</h3>
-                <p className="text-xs text-slate-400 font-mono">Foundational Engineering</p>
-              </div>
-            </div>
+  /* Floating task tag positions */
+  const floatingTags = [
+    { text: 'DESIGN',      rot: -7, x: '70%',  y: '25%', dur: 4.2 },
+    { text: 'ENGINEERING', rot: 4,  x: '67%',  y: '54%', dur: 5.1 },
+    { text: 'ANIMATION',   rot: -4, x: '74%',  y: '74%', dur: 4.7 },
+  ];
 
-            <h4 className="text-2xl font-black text-slate-100 mb-3 leading-snug">
-              Core Low-Level Memory & Network Bedrock
-            </h4>
+  return (
+    <section
+      id="seeds"
+      aria-labelledby="seeds-heading"
+      style={{
+        minHeight: '90vh',
+        background: C.blue,
+        position: 'relative',
+        overflow: 'hidden',
+        display: 'flex',
+        alignItems: 'center',
+        padding: '100px 60px',
+        borderTop: `1px solid rgba(255,255,255,0.12)`,
+      }}
+    >
+      <div style={{ maxWidth: 1400, margin: '0 auto', width: '100%' }}>
+        {/* Text block */}
+        <div style={{ maxWidth: 560 }}>
+          <Reveal>
+            <p style={sectionLabel('rgba(255,255,255,0.5)')}>01 / SEEDS</p>
+          </Reveal>
 
-            <p className="text-slate-300 text-sm leading-relaxed mb-6">
-              Laying down the high-throughput foundation. Engineered low-level memory allocation routines, object-oriented Java system patterns, and resilient socket routing for zero latency.
+          <Reveal delay={0.06}>
+            <h2
+              id="seeds-heading"
+              style={{
+                fontFamily: "'Bebas Neue', sans-serif",
+                fontSize: 'clamp(5.5rem, 15vw, 15rem)',
+                color: C.white,
+                lineHeight: 0.87,
+                margin: '10px 0 32px',
+                letterSpacing: '0.01em',
+              }}
+            >
+              SEEDS
+            </h2>
+          </Reveal>
+
+          <Reveal delay={0.12}>
+            <p style={{ ...bodyText('rgba(255,255,255,0.68)', 20), maxWidth: 340 }}>
+              Start with the unfinished.
             </p>
+          </Reveal>
+        </div>
 
-            {/* Feature Pills */}
-            <div className="space-y-2 mb-6">
-              <div className="flex items-center gap-2 text-xs bg-slate-950/60 p-2.5 rounded-xl border border-slate-800 text-slate-300">
-                <CheckCircleIcon />
-                <span>Low-Level C Memory Allocation & Pointer Safety</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs bg-slate-950/60 p-2.5 rounded-xl border border-slate-800 text-slate-300">
-                <CheckCircleIcon />
-                <span>Java Object-Oriented System Architecture</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs bg-slate-950/60 p-2.5 rounded-xl border border-slate-800 text-slate-300">
-                <CheckCircleIcon />
-                <span>CCNA Networking Principles & Packet Routing</span>
-              </div>
-            </div>
+        {/* Floating task tag shapes — decorative, aria-hidden */}
+        {!prefersReducedMotion && floatingTags.map((tag, i) => (
+          <motion.div
+            key={tag.text}
+            aria-hidden="true"
+            className="seed-tag"
+            style={{
+              left: tag.x, top: tag.y,
+              transform: `rotate(${tag.rot}deg)`,
+            }}
+            initial={{ opacity: 0, scale: 0.8 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.3 + i * 0.1, duration: 0.6, ease }}
+            animate={{
+              y: [0, -10, 0],
+            }}
+          >
+            <span
+              style={{
+                fontFamily: "'Space Grotesk', sans-serif",
+                fontWeight: 700,
+                fontSize: 10,
+                letterSpacing: '0.1em',
+                color: 'rgba(255,255,255,0.65)',
+                textTransform: 'uppercase',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {tag.text}
+            </span>
+          </motion.div>
+        ))}
+      </div>
+    </section>
+  );
+}
 
-            <div className="pt-4 border-t border-slate-800 flex items-center justify-between text-xs font-mono text-emerald-400/90">
-              <span>⚡ 0.2ms Packet Sync</span>
-              <span>🛡️ Zero Memory Leaks</span>
-            </div>
+/* ==========================================================================
+   RIPENING SECTION (02)
+   ========================================================================== */
+function RipeningSection() {
+  const prefersReducedMotion = useReducedMotion();
+
+  return (
+    <section
+      aria-labelledby="ripening-heading"
+      style={{
+        minHeight: '90vh',
+        background: C.yellow,
+        position: 'relative',
+        overflow: 'hidden',
+        display: 'flex',
+        alignItems: 'center',
+        padding: '100px 60px',
+      }}
+    >
+      <div
+        className="story-split"
+        style={{ maxWidth: 1400, margin: '0 auto', width: '100%' }}
+      >
+        {/* Left: text */}
+        <div>
+          <Reveal>
+            <p style={sectionLabel(`${C.orange}`)}>02 / RIPENING</p>
+          </Reveal>
+
+          <Reveal delay={0.06}>
+            <h2
+              id="ripening-heading"
+              style={{
+                fontFamily: "'Bebas Neue', sans-serif",
+                fontSize: 'clamp(4.5rem, 11vw, 11rem)',
+                color: C.navy,
+                lineHeight: 0.87,
+                margin: '10px 0 32px',
+              }}
+            >
+              RIPENING
+            </h2>
+          </Reveal>
+
+          <Reveal delay={0.12}>
+            <p style={{ ...bodyText(`${C.navy}BB`, 20), maxWidth: 340 }}>
+              Momentum makes it sweeter.
+            </p>
+          </Reveal>
+        </div>
+
+        {/* Right: blender — visual focus */}
+        <Reveal delay={0.12}>
+          <div
+            className="story-split-visual"
+            style={{ display: 'flex', justifyContent: 'center' }}
+          >
+            <motion.div
+              animate={prefersReducedMotion ? {} : { y: [-10, 10, -10] }}
+              transition={{ duration: 5.5, repeat: Infinity, ease: 'easeInOut' }}
+              style={{ filter: `drop-shadow(0 22px 44px rgba(23,37,84,0.22))` }}
+            >
+              <BlenderSVG fillLevel={0.52} liquidColor={C.orange} />
+            </motion.div>
           </div>
-        </section>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
 
+/* ==========================================================================
+   HARVEST SECTION (03)
+   ========================================================================== */
+function HarvestSection() {
+  const prefersReducedMotion = useReducedMotion();
 
-        {/* SECTION 2: 25% - 50% (The Ripening -> Data & AI Engineer Aman) */}
-        <section className="min-h-screen flex items-center justify-end py-20">
-          <div 
-            ref={text2Ref} 
-            className="w-full md:w-1/2 lg:w-5/12 bg-slate-900/90 backdrop-blur-xl border border-amber-500/30 rounded-3xl p-8 shadow-2xl shadow-amber-950/40 relative group"
+  return (
+    <section
+      id="harvest"
+      aria-labelledby="harvest-heading"
+      style={{
+        minHeight: '90vh',
+        background: C.white,
+        position: 'relative',
+        overflow: 'hidden',
+        display: 'flex',
+        alignItems: 'center',
+        padding: '100px 60px',
+        borderTop: `6px solid ${C.green}`,
+      }}
+    >
+      <div
+        className="story-split"
+        style={{ maxWidth: 1400, margin: '0 auto', width: '100%' }}
+      >
+        {/* Left: tetrapack reveal — visual focus */}
+        <Reveal>
+          <div
+            className="story-split-visual"
+            style={{ display: 'flex', justifyContent: 'center' }}
           >
-            <div className="absolute -top-3 left-6 px-3 py-1 bg-amber-500 text-slate-950 font-mono font-black text-xs rounded-full uppercase tracking-wider shadow-md">
-              02 / THE RIPENING
-            </div>
-
-            <div className="flex items-center gap-3 mb-4 mt-2">
-              <div className="p-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
-                <BrainIcon />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-amber-300">Aman Thakur</h3>
-                <p className="text-xs text-slate-400 font-mono">Data & AI Engineer (Research Intern)</p>
-              </div>
-            </div>
-
-            <h4 className="text-2xl font-black text-slate-100 mb-3 leading-snug">
-              Signal Processing & Local Qwen 2.5 Intelligence
-            </h4>
-
-            <p className="text-slate-300 text-sm leading-relaxed mb-6">
-              Constructed Python digital signal processing (DSP) pipelines to filter surface electromyography (EMG) muscle signals for silent speech recognition, alongside deploying local Qwen 2.5 AI environments.
-            </p>
-
-            {/* Feature Pills */}
-            <div className="space-y-2 mb-6">
-              <div className="flex items-center gap-2 text-xs bg-slate-950/60 p-2.5 rounded-xl border border-slate-800 text-slate-300">
-                <CheckCircleIcon />
-                <span>Python Signal Processing Pipelines & DSP Filtering</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs bg-slate-950/60 p-2.5 rounded-xl border border-slate-800 text-slate-300">
-                <CheckCircleIcon />
-                <span>Surface Electromyography (EMG) Silent Speech AI</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs bg-slate-950/60 p-2.5 rounded-xl border border-slate-800 text-slate-300">
-                <CheckCircleIcon />
-                <span>Local AI Environments & Qwen 2.5 Execution</span>
-              </div>
-            </div>
-
-            <div className="pt-4 border-t border-slate-800 flex items-center justify-between text-xs font-mono text-amber-400/90">
-              <span>🧠 98.4% EMG Accuracy</span>
-              <span>⚡ Offline LLM Inference</span>
-            </div>
+            <motion.div
+              animate={prefersReducedMotion ? {} : { y: [-12, 10, -12] }}
+              transition={{ duration: 6.5, repeat: Infinity, ease: 'easeInOut' }}
+              style={{ filter: `drop-shadow(0 20px 40px rgba(34,197,94,0.28))` }}
+            >
+              <MangoTetrapack size="lg" animate={true} />
+            </motion.div>
           </div>
-        </section>
+        </Reveal>
 
+        {/* Right: text */}
+        <div>
+          <Reveal delay={0.06}>
+            <p style={sectionLabel(C.green)}>03 / HARVEST</p>
+          </Reveal>
 
-        {/* SECTION 3: 50% - 75% (The Blender -> UI/UX & Motion Developer) */}
-        <section className="min-h-screen flex items-center justify-start py-20">
-          <div 
-            ref={text3Ref} 
-            className="w-full md:w-1/2 lg:w-5/12 bg-slate-900/90 backdrop-blur-xl border border-orange-500/30 rounded-3xl p-8 shadow-2xl shadow-orange-950/40 relative group"
-          >
-            <div className="absolute -top-3 left-6 px-3 py-1 bg-orange-500 text-slate-950 font-mono font-black text-xs rounded-full uppercase tracking-wider shadow-md">
-              03 / THE BLENDER
-            </div>
+          <Reveal delay={0.1}>
+            <h2
+              id="harvest-heading"
+              style={{
+                fontFamily: "'Bebas Neue', sans-serif",
+                fontSize: 'clamp(4.5rem, 11vw, 11rem)',
+                color: C.navy,
+                lineHeight: 0.87,
+                margin: '10px 0 32px',
+              }}
+            >
+              HARVEST
+            </h2>
+          </Reveal>
 
-            <div className="flex items-center gap-3 mb-4 mt-2">
-              <div className="p-2.5 rounded-2xl bg-orange-500/10 border border-orange-500/30 text-orange-400">
-                <SparklesIcon />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-orange-300">UI/UX & Motion Developer</h3>
-                <p className="text-xs text-slate-400 font-mono">Creative Experience Lead</p>
-              </div>
-            </div>
-
-            <h4 className="text-2xl font-black text-slate-100 mb-3 leading-snug">
-              Tactile Micro-Interactions & React Portals
-            </h4>
-
-            <p className="text-slate-300 text-sm leading-relaxed mb-6">
-              Blended visual aesthetics with technical rigor. Crafted custom GSAP timelines, Framer Motion portal overlays, and accessible dnd-kit drag-and-drop Kanban mechanics.
+          <Reveal delay={0.15}>
+            <p style={{ ...bodyText(`${C.navy}99`, 20), maxWidth: 340, marginBottom: 36 }}>
+              Make the win visible.
             </p>
+          </Reveal>
 
-            {/* Feature Pills */}
-            <div className="space-y-2 mb-6">
-              <div className="flex items-center gap-2 text-xs bg-slate-950/60 p-2.5 rounded-xl border border-slate-800 text-slate-300">
-                <CheckCircleIcon />
-                <span>Tactile Micro-Interactions & 60fps GSAP Motion</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs bg-slate-950/60 p-2.5 rounded-xl border border-slate-800 text-slate-300">
-                <CheckCircleIcon />
-                <span>React Portals & Celebration Particle Canvas</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs bg-slate-950/60 p-2.5 rounded-xl border border-slate-800 text-slate-300">
-                <CheckCircleIcon />
-                <span>Accessible dnd-kit Drag-and-Drop Architecture</span>
-              </div>
+          {/* Stage chips */}
+          <Reveal delay={0.2}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              {[
+                { text: 'DONE',    color: C.green },
+                { text: 'BLENDED', color: C.blue },
+                { text: 'SHIPPED', color: C.orange },
+              ].map(({ text, color }) => (
+                <span
+                  key={text}
+                  style={{
+                    fontFamily: "'Space Grotesk', sans-serif",
+                    fontWeight: 700,
+                    fontSize: 10,
+                    letterSpacing: '0.12em',
+                    textTransform: 'uppercase',
+                    padding: '7px 16px',
+                    background: `${color}18`,
+                    color,
+                    border: `1.5px solid ${color}44`,
+                  }}
+                >
+                  {text}
+                </span>
+              ))}
             </div>
+          </Reveal>
+        </div>
+      </div>
+    </section>
+  );
+}
 
-            <div className="pt-4 border-t border-slate-800 flex items-center justify-between text-xs font-mono text-orange-400/90">
-              <span>🎨 60 FPS Fluid Motion</span>
-              <span>♿ 100 A11y Rating</span>
-            </div>
+/* ==========================================================================
+   BOARD SECTION (04) — embedded functional Kanban
+   ========================================================================== */
+function BoardSection({ onProfileOpen }) {
+  return (
+    <section
+      id="board"
+      aria-labelledby="board-heading"
+      style={{
+        background: C.offWhite,
+        padding: '100px 0 80px',
+        borderTop: `1px solid rgba(23,37,84,0.08)`,
+      }}
+    >
+      {/* Section header */}
+      <div
+        className="section-pad"
+        style={{
+          maxWidth: 1400,
+          margin: '0 auto',
+          padding: '0 60px 60px',
+        }}
+      >
+        <Reveal>
+          <p style={sectionLabel(C.orange)}>04 / BOARD</p>
+        </Reveal>
+
+        <Reveal delay={0.06}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'flex-end',
+              justifyContent: 'space-between',
+              gap: 24,
+              flexWrap: 'wrap',
+              marginTop: 10,
+            }}
+          >
+            <h2
+              id="board-heading"
+              style={{
+                fontFamily: "'Bebas Neue', sans-serif",
+                fontSize: 'clamp(3.5rem, 8vw, 7.5rem)',
+                color: C.navy,
+                lineHeight: 0.9,
+                margin: 0,
+                letterSpacing: '0.02em',
+              }}
+            >
+              YOUR<br />
+              WORK.
+            </h2>
+
+            <p
+              style={{
+                ...bodyText(`${C.navy}75`, 15),
+                maxWidth: 300,
+                paddingBottom: 6,
+              }}
+            >
+              Drag tasks through the stages. Harvest them all to blend.
+            </p>
           </div>
-        </section>
+        </Reveal>
+      </div>
 
+      {/* Embedded board — all DnD functionality intact */}
+      <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 60px' }}>
+        <Reveal delay={0.1}>
+          <Board embedded onProfileOpen={onProfileOpen} />
+        </Reveal>
+      </div>
+    </section>
+  );
+}
 
-        {/* SECTION 4: 75% - 100% (The Pour -> Security & Delivery Lead) */}
-        <section className="min-h-screen flex items-center justify-end py-20">
-          <div 
-            ref={text4Ref} 
-            className="w-full md:w-1/2 lg:w-5/12 bg-slate-900/90 backdrop-blur-xl border border-sky-500/30 rounded-3xl p-8 shadow-2xl shadow-sky-950/40 relative group"
+/* ==========================================================================
+   STATS SECTION (05)
+   ========================================================================== */
+function StatsSection() {
+  const columns = useStore(selectColumns);
+  const profile = useStore(selectProfile);
+
+  const harvestedCount = columns[COLUMNS.HARVESTED]?.length ?? 0;
+  const totalXP = VIRTUES.reduce(
+    (sum, v) => sum + (profile.lifetimeStats[v] ?? 0),
+    0,
+  );
+
+  const statItems = [
+    { value: harvestedCount,        label: 'Tasks Harvested', color: C.green  },
+    { value: totalXP,               label: 'XP Earned',       color: C.blue   },
+    { value: profile.totalShakes,   label: 'Sessions Blended',color: C.orange },
+    { value: profile.rank.title,    label: 'Current Rank',    color: C.navy, isText: true },
+  ];
+
+  return (
+    <section
+      id="stats"
+      aria-labelledby="stats-heading"
+      style={{
+        background: C.white,
+        padding: '120px 60px 100px',
+        borderTop: `1px solid rgba(23,37,84,0.08)`,
+      }}
+    >
+      <div style={{ maxWidth: 1400, margin: '0 auto' }}>
+        <Reveal>
+          <p style={sectionLabel(C.blue)}>05 / STATS</p>
+        </Reveal>
+
+        <Reveal delay={0.06}>
+          <h2
+            id="stats-heading"
+            style={{
+              fontFamily: "'Bebas Neue', sans-serif",
+              fontSize: 'clamp(3rem, 7vw, 6.5rem)',
+              color: C.navy,
+              lineHeight: 0.9,
+              margin: '12px 0 72px',
+              letterSpacing: '0.02em',
+            }}
           >
-            <div className="absolute -top-3 left-6 px-3 py-1 bg-sky-400 text-slate-950 font-mono font-black text-xs rounded-full uppercase tracking-wider shadow-md">
-              04 / THE HARVEST & POUR
-            </div>
+            YOUR HARVEST.
+          </h2>
+        </Reveal>
 
-            <div className="flex items-center gap-3 mb-4 mt-2">
-              <div className="p-2.5 rounded-2xl bg-sky-500/10 border border-sky-500/30 text-sky-400">
-                <ShieldCheckIcon />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-sky-300">Security & Delivery Lead</h3>
-                <p className="text-xs text-slate-400 font-mono">Adversary Emulation & DevSecOps</p>
-              </div>
-            </div>
-
-            <h4 className="text-2xl font-black text-slate-100 mb-3 leading-snug">
-              Threat Intelligence & Final Delivery Audit
-            </h4>
-
-            <p className="text-slate-300 text-sm leading-relaxed mb-6">
-              Hardened system integrity. Analyzed APT threat actors such as OCEANLOTUS (APT32), mapped tradecraft to the Lockheed Martin Cyber Kill Chain, and conducted final security auditing.
-            </p>
-
-            {/* Feature Pills */}
-            <div className="space-y-2 mb-6">
-              <div className="flex items-center gap-2 text-xs bg-slate-950/60 p-2.5 rounded-xl border border-slate-800 text-slate-300">
-                <CheckCircleIcon />
-                <span>OCEANLOTUS (APT32) Threat Intel & Tradecraft Analysis</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs bg-slate-950/60 p-2.5 rounded-xl border border-slate-800 text-slate-300">
-                <CheckCircleIcon />
-                <span>Lockheed Martin Cyber Kill Chain Mapping</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs bg-slate-950/60 p-2.5 rounded-xl border border-slate-800 text-slate-300">
-                <CheckCircleIcon />
-                <span>Zero-Trust Security Auditing & Release Validation</span>
-              </div>
-            </div>
-
-            {/* CTA BUTTON */}
-            <div className="mt-8 pt-4 border-t border-slate-800">
-              <button
-                onClick={handleSkipToBoard}
-                className="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-amber-400 via-orange-500 to-amber-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black py-4 px-6 rounded-2xl text-base tracking-wide shadow-xl shadow-amber-500/30 transition-all duration-300 hover:scale-[1.02] active:scale-95 cursor-pointer group/btn"
+        <div className="stats-grid">
+          {statItems.map((stat, i) => (
+            <Reveal key={stat.label} delay={i * 0.07}>
+              <div
+                style={{
+                  padding: '40px 36px',
+                  borderRight: i < statItems.length - 1
+                    ? `1px solid rgba(23,37,84,0.1)`
+                    : 'none',
+                }}
               >
-                <span>ENTER THE HARVEST BOARD</span>
-                <ArrowRightIcon className="w-5 h-5 transition-transform group-hover/btn:translate-x-1.5" />
-              </button>
-            </div>
-          </div>
-        </section>
-
+                {/* Large number */}
+                <div
+                  style={{
+                    fontFamily: "'Bebas Neue', sans-serif",
+                    fontSize: stat.isText
+                      ? 'clamp(2rem, 3.5vw, 4rem)'
+                      : 'clamp(3.5rem, 7vw, 7rem)',
+                    color: stat.color,
+                    lineHeight: 1,
+                    marginBottom: 10,
+                    letterSpacing: stat.isText ? '0.03em' : '0.01em',
+                  }}
+                >
+                  {stat.value}
+                </div>
+                {/* Label */}
+                <div
+                  style={{
+                    fontFamily: "'Inter', sans-serif",
+                    fontWeight: 600,
+                    fontSize: 11,
+                    letterSpacing: '0.12em',
+                    textTransform: 'uppercase',
+                    color: `${C.navy}65`,
+                  }}
+                >
+                  {stat.label}
+                </div>
+              </div>
+            </Reveal>
+          ))}
+        </div>
       </div>
+    </section>
+  );
+}
 
-      {/* FOOTER SCROLL PROMPT */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-1 text-slate-400 text-xs font-mono pointer-events-none opacity-80">
-        <span>SCROLL TO UNFOLD STORY</span>
-        <ChevronDownIcon />
-      </div>
+/* ==========================================================================
+   FOOTER
+   ========================================================================== */
+function Footer() {
+  return (
+    <footer
+      role="contentinfo"
+      style={{
+        background: C.navy,
+        padding: '36px 60px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: 16,
+      }}
+    >
+      <span
+        style={{
+          fontFamily: "'Space Grotesk', sans-serif",
+          fontWeight: 700,
+          fontSize: 12,
+          letterSpacing: '0.12em',
+          textTransform: 'uppercase',
+          color: 'rgba(255,255,255,0.38)',
+        }}
+      >
+        MANGO HARVEST
+      </span>
+
+      <span
+        style={{
+          fontFamily: "'Inter', sans-serif",
+          fontSize: 11,
+          color: 'rgba(255,255,255,0.28)',
+        }}
+      >
+        Group 14 · Sophomore Project · 2026
+      </span>
+
+      <button
+        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        style={{
+          fontFamily: "'Space Grotesk', sans-serif",
+          fontWeight: 700,
+          fontSize: 11,
+          letterSpacing: '0.1em',
+          textTransform: 'uppercase',
+          color: C.yellow,
+          background: 'none', border: 'none', cursor: 'pointer',
+          transition: 'opacity 0.2s',
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.opacity = 0.7)}
+        onMouseLeave={(e) => (e.currentTarget.style.opacity = 1)}
+      >
+        BACK TO TOP ↑
+      </button>
+    </footer>
+  );
+}
+
+/* ==========================================================================
+   MAIN EXPORT
+   ========================================================================== */
+export function ScrollStory() {
+  const [showProfile, setShowProfile] = useState(false);
+
+  return (
+    <div style={{ fontFamily: "'Inter', sans-serif" }}>
+      {/* Fixed navigation */}
+      <Nav onProfileOpen={() => setShowProfile(true)} />
+
+      {/* Page sections */}
+      <HeroSection />
+      <SeedsSection />
+      <RipeningSection />
+      <HarvestSection />
+      <BoardSection onProfileOpen={() => setShowProfile(true)} />
+      <StatsSection />
+      <Footer />
+
+      {/* Profile drawer overlay — managed at page level */}
+      <ProfileStats
+        isOpen={showProfile}
+        onClose={() => setShowProfile(false)}
+      />
     </div>
   );
 }
