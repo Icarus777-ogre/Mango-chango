@@ -194,7 +194,7 @@ function renderCartonStage(overlay, tasks, sessionVirtues, heavyUpgrades) {
             ${renderStarburst({ color: C.orange, size: 26 })}
             <div>
               <div style="font-family: var(--font-heading); font-size: 18px; font-weight: 900; color: ${C.navy}; letter-spacing: -0.01em;">
-                MANGO HARVEST
+                CHANGO MANGO
               </div>
               <div style="font-size: 8px; color: rgba(23,37,84,0.7); letter-spacing: 0.1em; font-weight: 700;">
                 SESSION BLEND REPORT

@@ -86,7 +86,7 @@ export function renderTetrapack({ size = 'md', _animate = false } = {}) {
           font-weight="800"
           letter-spacing="2"
         >
-          MANGO HARVEST · 100% PURE
+          CHANGO MANGO · 100% PURE
         </text>
 
         <!-- Front Face Base -->
