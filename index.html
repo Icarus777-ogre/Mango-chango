@@ -7,22 +7,322 @@
     <meta name="description" content="Mango Harvest — Turn unfinished tasks into something golden. Drag, ripen, and harvest your work." />
     <title>Mango Harvest — Ripen Your Work.</title>
 
-    <!-- Preconnect for Google Fonts -->
+    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-
-    <!--
-      Display: Bebas Neue — bold, condensed, editorial headlines
-      Heading: Space Grotesk — labels, subheadings, nav
-      Body:    Inter — body copy, descriptions
-    -->
     <link
-      href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
+
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="/src/styles/main.css" />
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
+    <!-- ====================================================================
+         1. MAIN NAVIGATION
+         ==================================================================== -->
+    <nav id="main-nav" role="navigation" aria-label="Main navigation">
+      <button class="nav-wordmark" aria-label="Scroll to top">
+        Mango Harvest
+      </button>
+
+      <div class="nav-desktop">
+        <a href="#seeds" class="nav-link">SEEDS</a>
+        <a href="#board" class="nav-link">BOARD</a>
+        <a href="#harvest" class="nav-link">HARVEST</a>
+        <a href="#stats" class="nav-link">STATS</a>
+        <button id="profile-open-btn" class="btn-navy-outline">
+          PROFILE
+        </button>
+      </div>
+
+      <button id="mobile-menu-toggle" class="nav-mobile-btn" aria-label="Toggle mobile menu">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <line x1="3" y1="8" x2="21" y2="8"></line>
+          <line x1="3" y1="16" x2="21" y2="16"></line>
+        </svg>
+      </button>
+    </nav>
+
+    <!-- Mobile Dropdown Menu -->
+    <div id="mobile-menu">
+      <a href="#seeds" class="mobile-nav-link">SEEDS</a>
+      <a href="#board" class="mobile-nav-link">BOARD</a>
+      <a href="#harvest" class="mobile-nav-link">HARVEST</a>
+      <a href="#stats" class="mobile-nav-link">STATS</a>
+      <button class="mobile-nav-link" data-action="profile">PROFILE</button>
+    </div>
+
+    <!-- ====================================================================
+         2. HERO SECTION
+         ==================================================================== -->
+    <section id="hero" aria-labelledby="hero-title">
+      <!-- Decorative Bubbles -->
+      <div class="bubble" style="width: 430px; height: 430px; background: rgba(255,255,255,0.06); filter: blur(45px); left: 56%; top: -6%;"></div>
+      <div class="bubble" style="width: 210px; height: 210px; background: rgba(255,255,255,0.09); border: 1px solid rgba(255,255,255,0.15); left: 5%; top: 54%;"></div>
+      <div class="bubble" style="width: 95px; height: 95px; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); left: 83%; top: 67%;"></div>
+      <div class="bubble" style="width: 58px; height: 58px; background: rgba(255,255,255,0.16); border: 1px solid rgba(255,255,255,0.25); left: 22%; top: 16%;"></div>
+
+      <div class="hero-inner">
+        <div>
+          <p class="section-tag" style="color: rgba(255, 255, 255, 0.55);">
+            Mango Harvest Studio · 2026
+          </p>
+          <h1 id="hero-title" class="hero-title">
+            RIPEN<br />
+            YOUR<br />
+            WORK.
+          </h1>
+          <p class="body-lead" style="color: rgba(255, 255, 255, 0.75); max-width: 380px; margin-bottom: 44px;">
+            Turn unfinished tasks into something golden.
+          </p>
+          <button id="start-harvesting-btn" class="btn-editorial btn-yellow">
+            START HARVESTING
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+              <path d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="hero-tetrapack">
+          <div id="hero-tetrapack-mount" class="hero-tetrapack-wrapper"></div>
+        </div>
+      </div>
+
+      <!-- Scroll Prompt -->
+      <div class="scroll-indicator" aria-hidden="true">
+        <span class="section-tag" style="color: rgba(255,255,255,0.4); letter-spacing: 0.2em; font-size: 10px; margin: 0;">
+          SCROLL
+        </span>
+        <div class="scroll-indicator-mouse">
+          <svg width="18" height="26" viewBox="0 0 18 26" fill="none">
+            <rect x="1" y="1" width="16" height="24" rx="8" stroke="rgba(255,255,255,0.35)" stroke-width="1.5" />
+            <circle cx="9" cy="9" r="2.5" fill="rgba(255,255,255,0.5)" />
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         3. SEEDS SECTION (01)
+         ==================================================================== -->
+    <section id="seeds" aria-labelledby="seeds-heading">
+      <div style="max-width: 1400px; margin: 0 auto; width: 100%; position: relative;">
+        <div class="reveal" style="max-width: 560px;">
+          <p class="section-tag" style="color: rgba(255, 255, 255, 0.5);">01 / SEEDS</p>
+          <h2 id="seeds-heading" class="seeds-title">SEEDS</h2>
+          <p class="body-lead" style="color: rgba(255, 255, 255, 0.7); max-width: 340px;">
+            Start with the unfinished.
+          </p>
+        </div>
+
+        <!-- Floating Decorative Tag Shapes -->
+        <div class="seed-tag" style="left: 68%; top: 20%; transform: rotate(-7deg);">
+          <span style="font-family: var(--font-heading); font-weight: 700; font-size: 10px; letter-spacing: 0.1em; color: rgba(255,255,255,0.7); text-transform: uppercase;">DESIGN</span>
+        </div>
+        <div class="seed-tag" style="left: 64%; top: 50%; transform: rotate(4deg);">
+          <span style="font-family: var(--font-heading); font-weight: 700; font-size: 10px; letter-spacing: 0.1em; color: rgba(255,255,255,0.7); text-transform: uppercase;">ENGINEERING</span>
+        </div>
+        <div class="seed-tag" style="left: 72%; top: 76%; transform: rotate(-4deg);">
+          <span style="font-family: var(--font-heading); font-weight: 700; font-size: 10px; letter-spacing: 0.1em; color: rgba(255,255,255,0.7); text-transform: uppercase;">ANIMATION</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         4. RIPENING SECTION (02)
+         ==================================================================== -->
+    <section id="ripening" aria-labelledby="ripening-heading">
+      <div class="story-split">
+        <div class="reveal">
+          <p class="section-tag" style="color: var(--vivid-orange);">02 / RIPENING</p>
+          <h2 id="ripening-heading" class="ripening-title">RIPENING</h2>
+          <p class="body-lead" style="color: rgba(23, 37, 84, 0.75); max-width: 340px;">
+            Momentum makes it sweeter.
+          </p>
+        </div>
+
+        <div class="story-split-visual reveal">
+          <div id="ripening-blender-mount" class="story-blender-float"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         5. HARVEST SECTION (03)
+         ==================================================================== -->
+    <section id="harvest" aria-labelledby="harvest-heading">
+      <div class="story-split">
+        <div class="story-split-visual reveal">
+          <div id="harvest-tetrapack-mount" class="harvest-tetrapack-float"></div>
+        </div>
+
+        <div class="reveal">
+          <p class="section-tag" style="color: var(--fresh-green);">03 / HARVEST</p>
+          <h2 id="harvest-heading" class="harvest-title">HARVEST</h2>
+          <p class="body-lead" style="color: rgba(23, 37, 84, 0.65); max-width: 340px; margin-bottom: 36px;">
+            Make the win visible.
+          </p>
+
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <span class="stage-chip" style="background: rgba(34, 197, 94, 0.1); color: var(--fresh-green); border: 1.5px solid rgba(34, 197, 94, 0.3);">
+              DONE
+            </span>
+            <span class="stage-chip" style="background: rgba(37, 99, 235, 0.1); color: var(--electric-blue); border: 1.5px solid rgba(37, 99, 235, 0.3);">
+              BLENDED
+            </span>
+            <span class="stage-chip" style="background: rgba(251, 146, 60, 0.1); color: var(--vivid-orange); border: 1.5px solid rgba(251, 146, 60, 0.3);">
+              SHIPPED
+            </span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         6. EMBEDDED KANBAN BOARD (04)
+         ==================================================================== -->
+    <section id="board" aria-labelledby="board-heading">
+      <div class="board-container">
+        <!-- Section Heading -->
+        <div class="reveal" style="margin-bottom: 60px;">
+          <p class="section-tag" style="color: var(--vivid-orange);">04 / BOARD</p>
+          <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap; margin-top: 10px;">
+            <h2 id="board-heading" class="board-heading">
+              YOUR<br />
+              WORK.
+            </h2>
+            <p class="body-lead" style="font-size: 15px; color: rgba(23, 37, 84, 0.5); max-width: 300px; padding-bottom: 6px;">
+              Drag tasks through the stages. Harvest them all to blend.
+            </p>
+          </div>
+        </div>
+
+        <!-- Board Grid -->
+        <div id="kanban-board-grid" class="board-grid reveal"></div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         7. STATS SECTION (05)
+         ==================================================================== -->
+    <section id="stats" aria-labelledby="stats-heading">
+      <div style="max-width: 1400px; margin: 0 auto;">
+        <div class="reveal">
+          <p class="section-tag" style="color: var(--electric-blue);">05 / STATS</p>
+          <h2 id="stats-heading" style="font-family: var(--font-display); font-size: clamp(3rem, 7vw, 6.5rem); color: var(--ink-navy); line-height: 0.9; margin: 12px 0 72px; letter-spacing: 0.02em;">
+            YOUR HARVEST.
+          </h2>
+        </div>
+
+        <div class="stats-grid reveal">
+          <div class="stat-cell">
+            <div id="stat-tasks-harvested" class="stat-value" style="color: var(--fresh-green);">0</div>
+            <div class="stat-label">Tasks Harvested</div>
+          </div>
+          <div class="stat-cell">
+            <div id="stat-xp-earned" class="stat-value" style="color: var(--electric-blue);">0</div>
+            <div class="stat-label">XP Earned</div>
+          </div>
+          <div class="stat-cell">
+            <div id="stat-sessions-blended" class="stat-value" style="color: var(--vivid-orange);">0</div>
+            <div class="stat-label">Sessions Blended</div>
+          </div>
+          <div class="stat-cell">
+            <div id="stat-current-rank" class="stat-value text-rank" style="color: var(--ink-navy);">Seedling</div>
+            <div class="stat-label">Current Rank</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         8. FOOTER
+         ==================================================================== -->
+    <footer id="main-footer" role="contentinfo">
+      <span style="font-family: var(--font-heading); font-weight: 700; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.38);">
+        MANGO HARVEST
+      </span>
+      <span style="font-family: var(--font-body); font-size: 11px; color: rgba(255,255,255,0.28);">
+        Group 14 · Sophomore Project · 2026
+      </span>
+      <button id="back-to-top-btn" class="nav-link" style="color: var(--mango-yellow); font-family: var(--font-heading); font-size: 11px; font-weight: 700;">
+        BACK TO TOP ↑
+      </button>
+    </footer>
+
+    <!-- ====================================================================
+         SPRINKLER CURSOR (Board Area Only)
+         ==================================================================== -->
+    <div id="sprinkler-cursor"></div>
+
+    <!-- ====================================================================
+         TASK CREATOR MODAL
+         ==================================================================== -->
+    <div id="task-creator-modal"></div>
+
+    <!-- ====================================================================
+         9. CELEBRATION PORTAL OVERLAY
+         ==================================================================== -->
+    <div id="celebration-overlay"></div>
+
+    <!-- ====================================================================
+         10. PROFILE DRAWER MODAL
+         ==================================================================== -->
+    <div id="profile-backdrop"></div>
+    <aside id="profile-drawer" aria-label="Lifetime Profile Drawer">
+      <!-- Drawer Header -->
+      <div style="padding: 24px 28px 18px; border-bottom: 2px solid rgba(23,37,84,0.08); background: var(--pure-white); display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10;">
+        <div>
+          <p class="section-tag" style="color: var(--electric-blue); font-size: 10px; margin: 0 0 4px;">
+            Lifetime Profile
+          </p>
+          <h2 style="font-family: var(--font-display); font-size: 28px; color: var(--ink-navy); margin: 0; letter-spacing: 0.04em; line-height: 1;">
+            VIRTUE STATS
+          </h2>
+        </div>
+        <button id="profile-close-btn" class="btn-editorial" style="background: var(--ink-navy); color: var(--pure-white); width: 36px; height: 36px; padding: 0; justify-content: center; font-size: 16px;">
+          ✕
+        </button>
+      </div>
+
+      <div style="padding: 20px 28px 40px;">
+        <!-- Rank Card -->
+        <div style="background: var(--mango-yellow); border: 2px solid var(--ink-navy); box-shadow: 4px 4px 0 var(--ink-navy); padding: 18px 20px; display: flex; align-items: center; gap: 18px; margin-bottom: 28px;">
+          <div id="profile-rank-icon" style="font-size: 44px; line-height: 1;">🌱</div>
+          <div>
+            <p class="section-tag" style="color: rgba(23,37,84,0.6); font-size: 9px; margin: 0 0 2px;">
+              Current Rank
+            </p>
+            <div id="profile-rank-title" style="font-family: var(--font-display); font-size: 24px; color: var(--ink-navy); line-height: 1; letter-spacing: 0.04em;">
+              Seedling
+            </div>
+            <p id="profile-rank-subtitle" style="font-family: var(--font-body); font-size: 12px; color: rgba(23,37,84,0.7); font-weight: 500; margin: 4px 0 0;">
+              0 sessions · 0 pts total
+            </p>
+          </div>
+        </div>
+
+        <!-- Radar Chart Container -->
+        <div style="margin-bottom: 28px;">
+          <p class="section-tag" style="color: rgba(23,37,84,0.6); font-size: 10px; margin: 0 0 12px;">
+            VIRTUE RADAR
+          </p>
+          <div id="profile-radar-chart" style="border: 2px solid rgba(23,37,84,0.08); padding: 12px 0; background: #FAFBFF;"></div>
+        </div>
+
+        <!-- Lifetime Stat Bars List -->
+        <div>
+          <p class="section-tag" style="color: rgba(23,37,84,0.6); font-size: 10px; margin: 0 0 16px;">
+            LIFETIME STATS
+          </p>
+          <div id="profile-stats-list" style="display: flex; flex-direction: column; gap: 14px;"></div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- JavaScript Application Entry -->
+    <script type="module" src="/src/js/main.js"></script>
   </body>
 </html>
