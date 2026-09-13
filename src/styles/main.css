@@ -1139,7 +1139,7 @@ body {
   z-index: 1;
   background: var(--pure-white);
   border: 3px solid var(--ink-navy);
-  box-shadow: 8px 8px 0 var(--mango-yellow);
+  box-shadow: 10px 10px 0 var(--mango-yellow);
   width: min(580px, calc(100vw - 40px));
   max-height: calc(100vh - 60px);
   overflow-y: auto;
