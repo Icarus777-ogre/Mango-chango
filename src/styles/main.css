@@ -616,7 +616,7 @@ body {
 .task-card {
   background: var(--pure-white);
   border: 1.5px solid rgba(23, 37, 84, 0.1);
-  padding: 12px 14px;
+  padding: 16px;
   position: relative;
   user-select: none;
   cursor: grab;
@@ -1527,5 +1527,6 @@ body {
   transform: rotate(-15deg) scale(1.15);
   transition: transform 0.1s ease;
 }
+
 
 
